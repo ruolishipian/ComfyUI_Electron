@@ -1,52 +1,31 @@
-# 工作流名称
-name: Electron 自动构建 & 发布
+name: Electron Build
 
 on:
   push:
     branches: [ master ]
-    tags: [ 'v*' ]
-  workflow_dispatch:
+  workflow_dispatch: # 允许手动触发
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
+  build:
+    runs-on: windows-latest # 使用Windows构建环境
+
     steps:
-      - name: 拉取代码
-        uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-      - name: 安装Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18.x
-          cache: 'npm'
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20 # 推荐使用LTS版本
+        cache: 'npm' # 这里的cache是actions的缓存，和electron-builder无关，保留即可
 
-      - name: 安装Windows构建依赖
-        run: choco install -y wixtoolset
-        shell: pwsh
-        continue-on-error: true
+    - name: Install dependencies
+      run: npm install
 
-      - name: 安装依赖
-        run: |
-          npm config set registry https://registry.npmmirror.com
-          npm install --force
-        shell: pwsh
+    - name: Build Electron app
+      run: electron-builder --win --x64 # 仅保留合法参数，移除cache/clean
 
-      # 新增：清理electron-builder缓存（避免旧缓存导致签名配置冲突）
-      - name: 清理electron-builder缓存
-        run: npx electron-builder cache clean
-        shell: pwsh
-
-      - name: 打包Windows版本
-        run: npm run build:win
-        shell: pwsh
-
-      - name: 上传压缩包到Releases
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: |
-            dist/ComfyUI_Electron-*-win.zip
-            dist/ComfyUI_Electron Setup *.exe
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: electron-build
+        path: dist/*.exe # 上传打包好的exe文件
