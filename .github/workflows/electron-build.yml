@@ -31,6 +31,16 @@ jobs:
           npm install --force
         shell: pwsh
 
+      # 新增：清理electron-builder缓存（关键修改）
+      - name: 清理electron-builder缓存
+        run: |
+          # 删除Windows下electron-builder的缓存目录，避免旧配置干扰
+          Remove-Item -Recurse -Force $env:LOCALAPPDATA\electron-builder\Cache -ErrorAction SilentlyContinue
+          # 清理node_modules中的缓存文件
+          Remove-Item -Recurse -Force node_modules\.cache\electron-builder -ErrorAction SilentlyContinue
+        shell: pwsh
+        continue-on-error: true # 缓存不存在时不报错
+
       # 关键修改：移除--config.win.sign=false参数，仅保留--win --x64
       - name: 打包Windows版本
         run: npx electron-builder --win --x64
