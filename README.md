@@ -1,5 +1,7 @@
 &nbsp;ComfyUI\_Electron启动器
 
+<img src="./images/1.png" width="600" alt="ComfyUI启动器界面截图">
+
 让便携包confyui像Windows程序一样使用。
 
 一款开箱即用的ComfyUI一键启动器，自带日志监控、进程管理、端口自动清理，无需手动配置环境。
