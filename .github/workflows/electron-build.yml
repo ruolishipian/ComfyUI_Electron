@@ -31,9 +31,9 @@ jobs:
           npm install --force
         shell: pwsh
 
-      # 关键修改：用npx调用electron-builder，而非直接执行
+      # 关键修改：移除--config.win.sign=false参数，仅保留--win --x64
       - name: 打包Windows版本
-        run: npx electron-builder --win --x64 --config.win.sign=false
+        run: npx electron-builder --win --x64
         shell: pwsh
 
       - name: 上传压缩包到Releases
