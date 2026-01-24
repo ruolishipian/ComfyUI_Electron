@@ -11,7 +11,7 @@
 
 \## 📥 下载
 
-\- 最新版本：\[Releases](https://github.com/ruolishipian/ComfyUI-Launcher/releases)
+\- 最新版本：\[Releases](https://github.com/ruolishipian/ComfyUI_Electron/releases)
 
 \- 可选包类型：
 
