@@ -1,0 +1,56 @@
+{
+  "name": "ComfyUI_Electron",
+  "version": "1.0.0",
+  "description": "ComfyUI一键启动器，自带日志监控、进程管理、端口自动清理，开箱即用",
+  "main": "main.js",
+  "author": "ruolishipian",
+  "license": "MIT",
+  "homepage": "https://github.com/ruolishipian/ComfyUI_Electron",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win --x64"
+  },
+  "dependencies": {
+    "iconv-lite": "^0.6.3"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.ruolishipian.comfyui-electron",
+    "productName": "ComfyUI_Electron",
+    "copyright": "Copyright © 2026 ${author}",
+    "directories": {
+      "output": "dist",
+      "buildResources": "assets"
+    },
+    "asar": false,
+    "compression": "maximum",
+    "publish": null,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [ "x64" ]
+        },
+        {
+          "target": "zip",
+          "arch": [ "x64" ]
+        }
+      ],
+      "requestedExecutionLevel": "highestAvailable",
+      "sign": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "license": "LICENSE",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "ComfyUI_Electron"
+    }
+  }
+}

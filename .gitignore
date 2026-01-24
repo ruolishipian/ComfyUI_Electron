@@ -1,0 +1,18 @@
+# Node.js 依赖（他人拉取代码后执行 npm install 即可生成）
+node_modules/
+package-lock.json
+
+# Electron 打包产物（通过 Releases 发布，不提交）
+dist/
+build/
+out/
+
+# 系统/编辑器缓存
+.DS_Store
+.idea/
+.vscode/
+*.log
+.env
+
+# electron-builder 缓存文件
+AppData/
