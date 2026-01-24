@@ -10,7 +10,7 @@
     "start": "electron .",
     "pack": "electron-builder --dir",
     "build": "electron-builder",
-    "build:win": "electron-builder --win --x64 --config.win.sign=false"
+    "build:win": "electron-builder --win --x64"
   },
   "dependencies": {
     "iconv-lite": "^0.6.3"
@@ -29,7 +29,8 @@
     },
     "asar": false,
     "compression": "maximum",
-    "publish": null,
+    "publish": "never",
+    "afterPack": "./skip-sign.js",
     "win": {
       "target": [
         "zip",
