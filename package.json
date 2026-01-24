@@ -10,7 +10,7 @@
     "start": "electron .",
     "pack": "electron-builder --dir",
     "build": "electron-builder",
-    "build:win": "electron-builder --win --x64 --config.nsis.sign=false --config.win.sign=false"
+    "build:win": "electron-builder --win --x64 --config.win.sign=false"
   },
   "dependencies": {
     "iconv-lite": "^0.6.3"
@@ -32,26 +32,17 @@
     "publish": null,
     "win": {
       "target": [
-        {
-          "target": "nsis",
-          "arch": [ "x64" ]
-        },
-        {
-          "target": "zip",
-          "arch": [ "x64" ]
-        }
+        "zip",
+        "nsis"
       ],
-      "requestedExecutionLevel": "highestAvailable",
       "sign": false
     },
     "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
+      "oneClick": true,
       "license": "LICENSE",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "ComfyUI_Electron",
-      "sign": false
+      "shortcutName": "ComfyUI_Electron"
     }
   }
 }

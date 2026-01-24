@@ -1,62 +1,52 @@
 # 工作流名称
 name: Electron 自动构建 & 发布
 
-# 触发条件：1. 推送到master分支 2. 打版本标签（比如v1.0.0）
 on:
   push:
-    branches: [ master ]          # 推代码到master时触发（可选，测试用）
-    tags: [ 'v*' ]                # 打v开头的标签时触发（正式发布用，推荐）
-  # 也可手动触发：在GitHub仓库Actions页面点击"Run workflow"
+    branches: [ master ]
+    tags: [ 'v*' ]
   workflow_dispatch:
 
-# 任务配置
 jobs:
   build-windows:
-    # 运行环境：GitHub提供的Windows虚拟机
     runs-on: windows-latest
-
     steps:
-      # 步骤1：拉取仓库代码到虚拟机
       - name: 拉取代码
         uses: actions/checkout@v4
 
-      # 步骤2：安装Node.js（修改点1：改用Electron 28兼容的18.x版本，更稳定）
       - name: 安装Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18.x       # 从20.x改为18.x，解决版本兼容问题
-          cache: 'npm'             # 缓存npm依赖，加速下次构建
+          node-version: 18.x
+          cache: 'npm'
 
-      # 新增步骤：安装Windows打包必需依赖（修改点2：补充electron-builder打包依赖）
       - name: 安装Windows构建依赖
         run: choco install -y wixtoolset
         shell: pwsh
-        continue-on-error: true    # 即使安装失败也继续（避免wixtoolset已存在导致报错）
+        continue-on-error: true
 
-      # 步骤3：安装项目依赖（修改点3：添加国内镜像+强制安装，解决依赖下载/冲突问题）
       - name: 安装依赖
         run: |
-          npm config set registry https://registry.npmmirror.com  # 切换国内npm镜像，加速下载
-          npm install --force                                     # --force解决依赖版本冲突
+          npm config set registry https://registry.npmmirror.com
+          npm install --force
         shell: pwsh
 
-      # 步骤4：执行Electron打包命令（和你本地的build:win一致）
+      # 新增：清理electron-builder缓存（避免旧缓存导致签名配置冲突）
+      - name: 清理electron-builder缓存
+        run: npx electron-builder cache clean
+        shell: pwsh
+
       - name: 打包Windows版本
         run: npm run build:win
         shell: pwsh
 
-      # 步骤5：自动发布到Releases（仅打标签时触发）
       - name: 上传压缩包到Releases
         uses: softprops/action-gh-release@v2
-        # 仅当打v开头标签时执行这一步（避免推代码时重复发布）
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          # 指定要上传的文件（匹配electron-builder输出的zip包）
           files: |
             dist/ComfyUI_Electron-*-win.zip
             dist/ComfyUI_Electron Setup *.exe
-          # 自动生成Release说明（可选）
           generate_release_notes: true
         env:
-          # 授权：GitHub自动生成的令牌，无需手动配置
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
