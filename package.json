@@ -29,7 +29,6 @@
     },
     "asar": false,
     "compression": "maximum",
-    "publish": "never",
     "afterPack": "./skip-sign.js",
     "win": {
       "target": [
