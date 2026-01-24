@@ -10,6 +10,9 @@ on:
 jobs:
   build-windows:
     runs-on: windows-latest
+    # 给整个job配置GH_TOKEN，所有步骤都能访问
+    env:
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
     steps:
       - name: 拉取代码（适配你的仓库）
         uses: actions/checkout@v4
@@ -20,15 +23,10 @@ jobs:
           node-version: 18.x
           cache: 'npm'
 
-      - name: 安装Windows构建依赖（NSIS打包需要）
-        run: choco install -y wixtoolset
-        shell: pwsh
-        continue-on-error: true
-
       - name: 安装项目依赖（使用国内镜像加速）
         run: |
           npm config set registry https://registry.npmmirror.com
-          npm install --force
+          npm install  # 移除--force，避免掩盖依赖冲突
         shell: pwsh
 
       - name: 清理electron-builder缓存（避免旧配置干扰）
@@ -38,11 +36,11 @@ jobs:
         shell: pwsh
         continue-on-error: true
 
-      - name: 打包Windows x64版本（适配你的需求）
-        run: npx electron-builder --win --x64
+      - name: 打包Windows x64版本（禁用electron-builder自动发布）
+        run: npx electron-builder --win --x64 --publish never  # 关键：--publish never 禁用自动发布
         shell: pwsh
 
-      - name: 上传产物到Releases（仅打tag时执行，适配你的仓库）
+      - name: 上传产物到Releases（仅打tag时执行）
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
