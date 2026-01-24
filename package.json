@@ -10,7 +10,7 @@
     "start": "electron .",
     "pack": "electron-builder --dir",
     "build": "electron-builder",
-    "build:win": "electron-builder --win --x64 --config.nsis.sign=false --config.win.sign=false" // 关键修改1：脚本添加禁用签名参数
+    "build:win": "electron-builder --win --x64 --config.nsis.sign=false --config.win.sign=false"
   },
   "dependencies": {
     "iconv-lite": "^0.6.3"
@@ -42,7 +42,7 @@
         }
       ],
       "requestedExecutionLevel": "highestAvailable",
-      "sign": false // 保留原有配置，双重保障
+      "sign": false
     },
     "nsis": {
       "oneClick": false,
@@ -51,7 +51,7 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "ComfyUI_Electron",
-      "sign": false // 关键修改2：nsis节点新增禁用签名，彻底跳过安装包签名
+      "sign": false
     }
   }
 }
