@@ -1,6 +1,6 @@
-# Node.js 依赖（他人拉取代码后执行 npm install 即可生成）
+# Node.js 依赖（仅忽略node_modules，package-lock.json需提交）
 node_modules/
-package-lock.json
+# 已删除：package-lock.json  ← 关键修改：移除这行，不再忽略锁文件
 
 # Electron 打包产物（通过 Releases 发布，不提交）
 dist/
