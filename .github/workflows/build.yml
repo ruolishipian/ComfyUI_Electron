@@ -36,9 +36,9 @@ jobs:
         shell: pwsh
         continue-on-error: true
 
-      - name: 构建应用（最小化打包配置）
+      - name: 构建应用（最小化打包配置，禁用自动发布）
         run: |
-          npm run build-minimal
+          npm run build-minimal -- --publish=never
         shell: pwsh
         env:
           NODE_ENV: production
@@ -93,9 +93,9 @@ jobs:
           rm -rf node_modules/.cache/electron-builder
         continue-on-error: true
 
-      - name: 构建Linux应用（最小化打包）
+      - name: 构建Linux应用（最小化打包，禁用自动发布）
         run: |
-          npm run build -- --linux --x64
+          npm run build -- --linux --x64 --publish=never
         env:
           NODE_ENV: production
 
@@ -140,9 +140,9 @@ jobs:
           rm -rf node_modules/.cache/electron-builder
         continue-on-error: true
 
-      - name: 构建macOS应用（最小化打包）
+      - name: 构建macOS应用（最小化打包，禁用自动发布）
         run: |
-          npm run build -- --mac --x64
+          npm run build -- --mac --x64 --publish=never
         env:
           NODE_ENV: production
 
