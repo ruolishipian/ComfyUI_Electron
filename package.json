@@ -1,6 +1,6 @@
 {
   "name": "ComfyUI_Electron",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "ComfyUI一键启动器，自带日志监控、进程管理、端口自动清理，开箱即用",
   "main": "main.js",
   "author": "ruolishipian",
