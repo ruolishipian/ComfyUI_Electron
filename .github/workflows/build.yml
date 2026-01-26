@@ -1,15 +1,17 @@
 # 工作流名称（适配你的ComfyUI_Electron项目）
-name: Electron 自动构建 & 最小化发布
+name: Electron 自动构建 & 发布
 
 on:
   push:
-    tags: [ 'v*' ]  # 仅在推送标签时触发，移除分支推送触发
+    tags: [ 'v*' ]
   workflow_dispatch:
 
 jobs:
   build-windows:
     runs-on: windows-latest
-
+    # 给整个job配置GH_TOKEN，所有步骤都能访问
+    env:
+      GH_TOKEN: ${{ secrets.ComfyUI_Electron-Build-New }}
     steps:
       - name: 拉取代码（适配你的仓库）
         uses: actions/checkout@v4
@@ -20,9 +22,10 @@ jobs:
           node-version: 18.x
           cache: 'npm'
 
-      - name: 安装项目依赖（包含开发依赖）
+      - name: 安装项目依赖（使用国内镜像加速）
         run: |
-          npm ci --production=false --no-optional
+          npm config set registry https://registry.npmmirror.com
+          npm install  # 移除--force，避免掩盖依赖冲突
         shell: pwsh
 
       - name: 清理electron-builder缓存（避免旧配置干扰）
@@ -32,37 +35,27 @@ jobs:
         shell: pwsh
         continue-on-error: true
 
-      - name: 构建应用（最小化打包配置，禁用自动发布）
-        run: |
-          npx electron-builder --win --x64 --config.asar=true --config.compression=maximum --publish never
+      - name: 打包Windows x64版本（禁用electron-builder自动发布）
+        run: npx electron-builder --win --x64 --publish never  # 关键：--publish never 禁用自动发布
         shell: pwsh
-        env:
-          NODE_ENV: production
-
-      - name: 显示构建产物目录
-        run: |
-          dir dist\
-        shell: pwsh
-        if: always()
-        continue-on-error: true
 
       - name: 上传产物到Releases（仅打tag时执行）
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/') && !cancelled()
+        if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            dist/**
+            dist/ComfyUI_Electron-*-win.zip
+            dist/ComfyUI_Electron Setup *.exe
           generate_release_notes: true
-          draft: false
-          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.ComfyUI_Electron-Build-New }}
 
       # 兜底：上传产物到Actions（即使没打tag也能手动下载）
-      - name: 上传最小化打包产物到Actions Artifacts
+      - name: 上传打包产物到Actions Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ComfyUI_Electron-Minimal-Win64
+          name: ComfyUI_Electron-Win64
           path: |
-            dist/**
+            dist/ComfyUI_Electron-*-win.zip
+            dist/ComfyUI_Electron Setup *.exe
           retention-days: 30
