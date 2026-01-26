@@ -1,17 +1,18 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:*; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:*; frame-src http://localhost:*;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* http://127.0.0.1:*; script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* http://127.0.0.1:*; style-src 'self' 'unsafe-inline' http://localhost:* http://127.0.0.1:*; connect-src 'self' http://localhost:* http://127.0.0.1:*; img-src 'self' blob: data: http://localhost:* http://127.0.0.1:*; media-src 'self' blob: data: http://localhost:* http://127.0.0.1:*; frame-src 'self' http://localhost:* http://127.0.0.1:*; child-src 'self' http://localhost:* http://127.0.0.1:*;">
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"> <!-- 禁用缩放以减少资源使用 -->
     <title>ComfyUI启动器 - 日志视图</title>
     <style>
-        /* 全局样式 */
+        /* 全局样式 - 优化版以平衡资源使用和显示效果 */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: "微软雅黑", Consolas, "Courier New", monospace;
+            font-family: "Microsoft YaHei", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; /* 简化字体栈 */
         }
 
         body {
@@ -19,6 +20,9 @@
             color: #ffffff;
             height: 100vh;
             overflow: hidden;
+            /* 启用基本硬件加速 */
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
         /* 顶部操作栏 - 修复：调整为右对齐 */
@@ -36,6 +40,7 @@
             width: 100%;
             z-index: 9990;
             justify-content: flex-end; /* 关键：按钮右对齐 */
+            /* 保持简单，避免复杂动画 */
         }
 
         .btn {
@@ -46,7 +51,7 @@
             border-radius: 4px;
             cursor: pointer;
             font-size: 14px;
-            transition: all 0.2s ease;
+            transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease; /* 保留基本过渡效果 */
         }
 
             .btn:hover {
@@ -64,10 +69,14 @@
             height: calc(100vh - 45px - 30px);
             border: none;
             display: none;
-            /* 添加性能优化样式 */
-            will-change: transform;
-            transform: translateZ(0);
-            -webkit-transform: translateZ(0);
+            /* 启用基本的硬件加速 */
+            will-change: auto;
+            transform: none;
+            -webkit-transform: none;
+            /* 确保iframe可见 */
+            visibility: visible;
+            opacity: 1;
+            z-index: 1;
         }
 
         /* 日志区域（默认日志视图） */
@@ -79,10 +88,10 @@
             font-size: 14px;
             line-height: 1.5;
             background: #1e1e1e;
-            /* 启用硬件加速 */
-            transform: translateZ(0);
-            -webkit-transform: translateZ(0);
-            will-change: scroll-position;
+            /* 启用基本的硬件加速 */
+            transform: none;
+            -webkit-transform: none;
+            will-change: auto;
         }
 
         /* ComfyUI下的可隐藏日志面板 */
@@ -94,12 +103,12 @@
             height: 0;
             background: #1e1e1e;
             border-top: 1px solid #444;
-            transition: height 0.3s ease;
+            transition: height 0.3s ease; /* 保留基本的过渡效果 */
             overflow: hidden;
             z-index: 9989;
-            /* 启用硬件加速 */
-            transform: translateZ(0);
-            -webkit-transform: translateZ(0);
+            /* 启用基本的硬件加速 */
+            transform: none;
+            -webkit-transform: none;
         }
 
         #log-resize-bar {
@@ -156,7 +165,7 @@
             cursor: pointer;
             font-size: 12px;
             margin-right: 10px;
-            transition: all 0.2s ease;
+            transition: background 0.2s ease, color 0.2s ease; /* 保留基本过渡效果 */
         }
 
             #auto-scroll-btn.off {
@@ -212,7 +221,8 @@
             display: none;
             resize: both;
             overflow: auto;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5); /* 重新启用阴影 */
+            /* 保持简单 */
         }
 
         #config-header {
@@ -348,12 +358,13 @@
             background: rgba(244, 71, 71, 0.2);
         }
 
-        /* 日志行样式 - 关键修改：补充normal类型（默认白色），优化颜色值 + 【新增】启动命令高亮 */
+        /* 日志行样式 - 优化版 */
         .log-line {
             margin: 2px 0;
             white-space: pre-wrap; /* 保留空格和换行 */
             word-break: break-all;
             font-family: Consolas, "Courier New", monospace; /* 等宽字体，日志更整齐 */
+            transition: none; /* 简单过渡 */
         }
 
             .log-line.info {
@@ -375,28 +386,6 @@
             .log-line.normal {
                 color: #ffffff; /* 白色 - 普通日志 */
             }
-
-            /* 【新增】启动命令行特殊样式 */
-            .log-line.info:contains("启动命令详情"),
-            .log-line.info:contains("Python路径"),
-            .log-line.info:contains("启动参数"),
-            .log-line.info:contains("完整Python命令"),
-            .log-line.info:contains("BAT文件路径"),
-            .log-line.info:contains("BAT执行命令"),
-            .log-line.info:contains("工作目录"),
-            .log-line.info:contains("端口"),
-            .log-line.info:contains("代理模式"),
-            .log-line.info:contains("自定义参数") {
-                background: rgba(76, 175, 80, 0.1);
-                border-left: 3px solid #4CAF50;
-                padding-left: 5px;
-            }
-
-        /* 日志时间戳样式 */
-        .log-timestamp {
-            color: #999999;
-            margin-right: 8px;
-        }
 
         /* 响应式布局 */
         @media (max-width: 768px) {
@@ -439,16 +428,19 @@
         <button class="btn" onclick="showConfigPanel()">⚙️ 配置中心</button>
         <button class="btn" onclick="startComfyUI()">▶️ 启动ComfyUI</button>
         <button class="btn" onclick="stopComfyUI()">⏹️ 停止ComfyUI</button>
+        <button class="btn" onclick="switchToLogView()">📋 日志视图</button>
+        <button class="btn" onclick="switchToComfyUIView()">🖼️ ComfyUI视图</button>
     </div>
 
     <!-- ComfyUI视图容器 -->
     <iframe id="comfyui-container" 
             frameborder="0"
-            allow="accelerometer; camera; clipboard-read; clipboard-write; display-capture; encrypted-media; geolocation; gyroscope; microphone; midi; usb;"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-downloads allow-popups allow-modals"
+            allow="accelerometer; camera; clipboard-read; clipboard-write; display-capture; encrypted-media; geolocation; gyroscope; microphone; midi; usb; fullscreen; web-share; payment;"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-downloads allow-popups allow-modals allow-top-navigation-by-user-activation allow-presentation"
             loading="eager"
             fetchpriority="high"
-            scrolling="auto"></iframe>
+            scrolling="auto"
+            style="background: #1e1e1e;"></iframe>
 
     <!-- 日志区域（默认视图） -->
     <div id="log-container"></div>
@@ -890,13 +882,83 @@
                 renderLog('⏹️ 开始停止ComfyUI...', 'info');
                 ipcRenderer.send('stop-comfyui');
             }
-
+            
+            // ==================== 手动视图切换 ====================
+            function switchToLogView() {
+                comfyuiContainer.style.display = 'none';
+                logContainer.style.display = 'block';
+                // 收起日志面板
+                comfyuiLogPanel.style.height = '0px';
+                comfyuiContainer.style.height = 'calc(100vh - 45px - 30px)';
+                toggleLogPanelBtn.textContent = '🔽 展开日志面板';
+                
+                // 更新窗口标题
+                window.parent && window.parent.document && (window.parent.document.title = 'ComfyUI启动器 - 日志视图');
+                renderLog('📋 切换到日志视图', 'info');
+            }
+            
+            function switchToComfyUIView() {
+                // 检查是否已知ComfyUI端口
+                const port = document.getElementById('comfy-port').value || 8188;
+                const comfyUrl = `http://localhost:${port}`;
+                
+                logContainer.style.display = 'none';
+                comfyuiContainer.style.display = 'block';
+                
+                // 使用setTimeout确保DOM更新后再加载
+                setTimeout(() => {
+                    // 设置iframe的src并添加加载监听
+                    comfyuiContainer.src = comfyUrl;
+                    
+                    // 添加加载状态指示
+                    document.body.style.cursor = 'wait';
+                    
+                    // 监听iframe加载完成
+                    comfyuiContainer.onload = function() {
+                        document.body.style.cursor = 'default';
+                        renderLog('✅ ComfyUI界面加载完成', 'success');
+                    };
+                    
+                    // 监听iframe加载错误
+                    comfyuiContainer.onerror = function() {
+                        document.body.style.cursor = 'default';
+                        renderLog('❌ ComfyUI界面加载失败，请检查服务是否正常运行', 'error');
+                    };
+                }, 100);
+                
+                // 更新窗口标题
+                window.parent && window.parent.document && (window.parent.document.title = `ComfyUI - 端口${port}`);
+                renderLog(`🖼️ 切换到ComfyUI视图 (端口${port})`, 'info');
+            }
+            
             // ==================== 视图切换 ====================
             ipcRenderer.on('switch-view', (_, viewType, comfyUrl) => {
                 if (viewType === 'comfyui') {
                     logContainer.style.display = 'none';
                     comfyuiContainer.style.display = 'block';
-                    comfyuiContainer.src = comfyUrl;
+                    
+                    // 确保iframe正确加载ComfyUI
+                    if (comfyuiContainer.src !== comfyUrl) {
+                        // 使用setTimeout确保DOM更新后再加载
+                        setTimeout(() => {
+                            comfyuiContainer.src = comfyUrl;
+                        }, 100);
+                    }
+                    
+                    // 添加加载状态指示
+                    document.body.style.cursor = 'wait';
+                    
+                    // 监听iframe加载完成
+                    comfyuiContainer.onload = function() {
+                        document.body.style.cursor = 'default';
+                        sendLog('✅ ComfyUI界面加载完成', 'success');
+                    };
+                    
+                    // 监听iframe加载错误
+                    comfyuiContainer.onerror = function() {
+                        document.body.style.cursor = 'default';
+                        sendLog('❌ ComfyUI界面加载失败，请检查服务是否正常运行', 'error');
+                    };
                 } else {
                     comfyuiContainer.style.display = 'none';
                     logContainer.style.display = 'block';
@@ -906,7 +968,51 @@
                     toggleLogPanelBtn.textContent = '🔽 展开日志面板';
                 }
             });
-
+            
+            // 监听加载状态检查
+            ipcRenderer.on('check-comfyui-load-status', () => {
+                // 检查iframe是否已加载内容
+                try {
+                    if (comfyuiContainer.contentDocument && comfyuiContainer.contentDocument.title) {
+                        sendLog(`✅ ComfyUI加载状态：已成功加载 (${comfyuiContainer.contentDocument.title})`, 'success');
+                    } else {
+                        sendLog('⚠️ ComfyUI加载状态：仍在加载中...', 'info');
+                        // 尝试重新加载
+                        setTimeout(() => {
+                            if (comfyuiContainer.style.display === 'block' && 
+                                comfyuiContainer.contentDocument && 
+                                !comfyuiContainer.contentDocument.body.innerHTML.trim()) {
+                                sendLog('🔄 尝试重新加载ComfyUI界面...', 'info');
+                                // 使用setTimeout确保在下一个事件循环中重新加载
+                                setTimeout(() => {
+                                    comfyuiContainer.src = comfyuiContainer.src; // 重新加载
+                                }, 100);
+                            }
+                        }, 3000);
+                    }
+                } catch (e) {
+                    // 跨域错误是正常的，因为页面还在加载中
+                    sendLog('⏳ ComfyUI加载状态：页面仍在加载中（可能因跨域策略无法访问内容）', 'info');
+                }
+            });
+            
+            // 处理iframe准备就绪消息
+            ipcRenderer.on('ensure-iframe-ready', () => {
+                // 确保iframe元素存在且已准备就绪
+                if (comfyuiContainer && comfyuiContainer.style.display === 'block') {
+                    // 确保iframe内容正确加载
+                    const port = document.getElementById('comfy-port').value || 8188;
+                    const currentSrc = comfyuiContainer.src;
+                    const expectedSrc = `http://localhost:${port}`;
+                    
+                    if (currentSrc !== expectedSrc) {
+                        // 如果iframe没有加载正确的URL，重新设置
+                        comfyuiContainer.src = expectedSrc;
+                        sendLog(`🔧 确保iframe加载正确URL: ${expectedSrc}`, 'info');
+                    }
+                }
+            });
+            
             // ==================== 快捷键 ====================
             function initShortcut() {
                 document.addEventListener('keydown', (e) => {

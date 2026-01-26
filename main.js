@@ -577,6 +577,13 @@ function startComfyUI() {
                     isComfyUISuccessStarted = true;
                     sendLog('🎉 ComfyUI启动成功，正在窗口内加载界面...', 'info');
                     setTimeout(() => loadComfyUIInWindow(), 2000); // 延迟2秒，确保服务就绪
+                    
+                    // 额外延迟，再次确保界面加载
+                    setTimeout(() => {
+                        if (mainWindow && !mainWindow.isDestroyed()) {
+                            mainWindow.webContents.send('switch-view', 'comfyui', `http://localhost:${config.port || 8188}`);
+                        }
+                    }, 5000); // 5秒后再次确保界面加载
                 }
             }
         });
@@ -643,9 +650,28 @@ function loadComfyUIInWindow() {
     const comfyUrl = `http://localhost:${port}`;
     currentView = 'comfyui';
 
-    // 通知渲染进程切换到ComfyUI视图
-    mainWindow.webContents.send('switch-view', 'comfyui', comfyUrl);
-    mainWindow.setTitle(`ComfyUI - 端口${port}`);
+    // 延迟加载，确保服务器完全就绪
+    setTimeout(() => {
+        // 通知渲染进程切换到ComfyUI视图
+        mainWindow.webContents.send('switch-view', 'comfyui', comfyUrl);
+        mainWindow.setTitle(`ComfyUI - 端口${port}`);
+        
+        // 添加加载状态监控
+        setTimeout(() => {
+            // 检查是否成功加载
+            mainWindow.webContents.send('check-comfyui-load-status');
+        }, 5000); // 5秒后检查加载状态
+        
+        // 额外延迟检查，确保界面完全加载
+        setTimeout(() => {
+            mainWindow.webContents.send('check-comfyui-load-status');
+        }, 10000); // 10秒后再检查一次
+    }, 3000); // 增加延迟到3秒，确保服务完全就绪
+    
+    // 额外延迟，确保iframe正确初始化
+    setTimeout(() => {
+        mainWindow.webContents.send('ensure-iframe-ready');
+    }, 1000); // 1秒后确保iframe准备就绪
 }
 
 // ==================== 主窗口创建（适配新版Electron） ====================
@@ -663,25 +689,28 @@ function createMainWindow() {
             webSecurity: false,             // 允许加载本地网页（解决ComfyUI资源加载）
             allowRunningInsecureContent: true, // 允许加载http本地服务
             // 添加性能优化选项
-            experimentalFeatures: true,     // 启用实验性功能
+            experimentalFeatures: false,     // 禁用实验性功能
             offscreen: false,               // 禁用离屏渲染
             spellcheck: false,              // 禁用拼写检查
             scrollBounce: false,            // 禁用弹性滚动效果
             enableWebSQL: false,            // 禁用WebSQL
             javascript: true,               // 启用JavaScript（必需）
-            images: true,                   // 启用图像加载
+            images: true,                   // 重新启用图像加载，这对UI很重要
             textAreasAreResizable: false,   // 禁用文本框缩放
-            webgl: true,                    // 启用WebGL（对图形处理很重要）
-            backgroundThrottling: false     // 禁用后台标签页节流
+            webgl: false,                   // 禁用WebGL以节省GPU资源
+            backgroundThrottling: false,    // 禁用后台标签页节流
+            // GPU相关设置
+            hardwareAcceleration: false,    // 禁用硬件加速
+            plugins: false,                 // 禁用插件
+            java: false,                    // 禁用Java
+            webaudio: false,                // 禁用Web Audio API
+            webgl2: false                  // 禁用WebGL 2.0
         },
-        // 添加硬件加速选项
-        transparent: false,                 // 禁用透明背景以提高性能
-        frame: true,                        // 使用原生窗口框架
-        // 启用硬件加速
-        webgl: true,
-        plugins: true,
-        experimentalCanvasFeatures: true,
-        hardwareAcceleration: true          // 启用硬件加速
+        // 确保窗口本身不使用硬件加速
+        webgl: false,
+        plugins: false,
+        experimentalCanvasFeatures: false,
+        hardwareAcceleration: false          // 禁用硬件加速
     });
 
     // 设置额外的性能优化
@@ -689,16 +718,34 @@ function createMainWindow() {
     mainWindow.setAutoHideMenuBar(true); // 自动隐藏菜单栏
     mainWindow.setMenuBarVisibility(false); // 隐藏菜单栏
     
+    // 配置session以允许iframe加载本地内容
+    mainWindow.webContents.session.webRequest.onBeforeRequest((details, callback) => {
+        // 允许本地请求
+        callback({});
+    });
+
     // 在加载页面前应用额外的webPreferences
     mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
         callback({
             responseHeaders: {
                 ...details.responseHeaders,
-                'Cross-Origin-Embedder-Policy': ['require-corp'],
-                'Cross-Origin-Opener-Policy': ['same-origin']
+                'Cross-Origin-Embedder-Policy': ['cors'],
+                'Cross-Origin-Opener-Policy': ['same-origin'],
+                'Access-Control-Allow-Origin': ['*'],
+                'Access-Control-Allow-Methods': ['GET, POST, OPTIONS'],
+                'Access-Control-Allow-Headers': ['*']
             }
         });
     });
+
+    // 配置webPreferences以更好地支持iframe
+    mainWindow.webContents.session.setPermissionRequestHandler((webContents, permission, callback) => {
+        // 授予所有本地请求权限
+        callback(true);
+    });
+
+    // 减少渲染进程资源使用
+    mainWindow.webContents.setZoomFactor(1); // 设置缩放因子为1，避免不必要的计算
 
     // 加载日志页面（默认视图）
     mainWindow.loadFile('index.html')
@@ -890,6 +937,40 @@ function startMemoryCleanup() {
     }, 300000); // 每5分钟执行一次
 }
 
+// ==================== 应用初始化 ====================
+app.commandLine.appendSwitch('disable-smooth-scrolling'); // 禁用平滑滚动
+app.commandLine.appendSwitch('prerender-from-omnibox', 'disabled'); // 禁用预渲染
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows', 'false'); // 禁用后台隐藏窗口
+app.commandLine.appendSwitch('disable-ipc-flooding-protection'); // 禁用IPC洪水保护
+app.commandLine.appendSwitch('disable-background-media-suspend'); // 禁用后台媒体暂停
+app.commandLine.appendSwitch('disable-hang-monitor'); // 禁用挂起监视器
+app.commandLine.appendSwitch('disable-presentation-api'); // 禁用演示API
+app.commandLine.appendSwitch('disable-encryption-win'); // 禁用Windows加密
+app.commandLine.appendSwitch('disable-quick-menu'); // 禁用快速菜单
+app.commandLine.appendSwitch('memory-pressure-off'); // 禁用内存压力通知
+
+// 启用CPU渲染（适度）
+app.commandLine.appendSwitch('disable-accelerated-2d-canvas');
+app.commandLine.appendSwitch('disable-accelerated-mjpeg-decode');
+app.commandLine.appendSwitch('disable-accelerated-video-encode');
+app.commandLine.appendSwitch('disable-background-media-suspend');
+app.commandLine.appendSwitch('disable-breakpad');
+app.commandLine.appendSwitch('disable-component-update');
+app.commandLine.appendSwitch('disable-domain-reliability');
+app.commandLine.appendSwitch('disable-features', 'TranslateUI,BlinkGenPropertyTrees,ImprovedVideoControls,Printing,PaymentRequest,WebBluetooth,BatteryStatusService');
+app.commandLine.appendSwitch('disable-ipc-flooding-protection');
+app.commandLine.appendSwitch('disable-renderer-backgrounding');
+app.commandLine.appendSwitch('force-fieldtrial-params', 'WebRTC-Audio-Red-For-Opus/Enabled/');
+app.commandLine.appendSwitch('enable-features', 'VizDisplayCompositor');
+app.commandLine.appendSwitch('memory-pressure-off');
+
+// 减少内存使用
+app.commandLine.appendSwitch('max_old_space_size', '1024'); // 限制V8堆大小
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=1024'); // V8引擎内存限制
+
+// 在应用准备就绪后执行
+app.whenReady().then(createMainWindow);
+
 // ==================== 应用生命周期（防多实例+进程清理） ====================
 // 防止多实例启动
 const gotTheLock = app.requestSingleInstanceLock();
@@ -906,7 +987,6 @@ if (!gotTheLock) {
     // 应用就绪
     app.whenReady().then(function() {
         loadConfig();          // 加载配置
-        createMainWindow();    // 创建主窗口
         createChineseMenu();   // 创建中文菜单
         startMemoryCleanup();  // 启动内存清理机制
         // 启动器就绪日志

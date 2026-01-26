@@ -7,10 +7,11 @@
   "license": "MIT",
   "homepage": "https://github.com/ruolishipian/ComfyUI_Electron",
   "scripts": {
-    "start": "electron . --js-flags=\"--expose-gc\"",
+    "start": "electron . --js-flags=\"--expose-gc --max-old-space-size=1024\" --disable-smooth-scrolling --disable-extensions --no-sandbox --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --prerender-from-omnibox=disabled --disable-features=TranslateUI,BlinkGenPropertyTrees,ImprovedVideoControls,Printing,PaymentRequest,WebBluetooth,AutonomousInvalidationForSubresources,VizDisplayCompositor",
     "pack": "electron-builder --dir",
-    "build": "electron-builder",
-    "build:win": "electron-builder --win --x64"
+    "build": "electron-builder --win --x64",
+    "build-full": "electron-builder --win --x64",
+    "build-minimal": "electron-builder --win --x64 --config.buildResources=''"
   },
   "dependencies": {
     "iconv-lite": "^0.6.3"
@@ -25,24 +26,60 @@
     "copyright": "Copyright © 2026 ${author}",
     "directories": {
       "output": "dist",
-      "buildResources": "assets"
+      "buildResources": ""
     },
-    "asar": false,
+    "files": [
+      "**/*",
+      "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+      "!**/node_modules/*.d.ts",
+      "!**/node_modules/*.map",
+      "!**/node_modules/.bin",
+      "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}",
+      "!.editorconfig",
+      "!**/._*",
+      "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
+      "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
+      "!**/{appveyor.yml,.travis.yml,circle.yml}",
+      "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
+    ],
+    "extraResources": [
+      {
+        "from": " LICENSE",
+        "to": " LICENSE"
+      }
+    ],
+    "asar": true,
     "compression": "maximum",
     "afterPack": "./skip-sign.js",
     "win": {
       "target": [
-        "zip",
-        "nsis"
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
-      "sign": false
+      "artifactName": "${productName}_v${version}.${ext}",
+      "icon": "icon.ico",
+      "sign": false,
+      "publisherName": "ruolishipian"
     },
     "nsis": {
-      "oneClick": true,
-      "license": "LICENSE",
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "ComfyUI_Electron"
+      "shortcutName": "ComfyUI_Electron",
+      "uninstallDisplayName": "ComfyUI_Electron"
     }
   }
 }
