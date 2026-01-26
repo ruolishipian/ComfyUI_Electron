@@ -1,5 +1,5 @@
 # 工作流名称（适配你的ComfyUI_Electron项目）
-name: Electron 自动构建 & 发布
+name: Electron 自动构建 & 最小化发布
 
 on:
   push:
@@ -35,8 +35,8 @@ jobs:
         shell: pwsh
         continue-on-error: true
 
-      - name: 打包Windows x64版本（禁用electron-builder自动发布）
-        run: npx electron-builder --win --x64 --publish never  # 关键：--publish never 禁用自动发布
+      - name: 打包Windows x64版本（最小化打包，禁用electron-builder自动发布）
+        run: npx electron-builder --win --x64 --config.asar=true --config.compression=maximum --publish never  # 关键：--publish never 禁用自动发布
         shell: pwsh
 
       - name: 上传产物到Releases（仅打tag时执行）
@@ -44,18 +44,18 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            dist/ComfyUI_Electron-*-win.zip
-            dist/ComfyUI_Electron Setup *.exe
+            dist/ComfyUI_Electron_v*-win.zip
+            dist/ComfyUI_Electron*Setup*.exe
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.ComfyUI_Electron-Build-New }}
 
       # 兜底：上传产物到Actions（即使没打tag也能手动下载）
-      - name: 上传打包产物到Actions Artifacts
+      - name: 上传最小化打包产物到Actions Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ComfyUI_Electron-Win64
+          name: ComfyUI_Electron-Minimal-Win64
           path: |
-            dist/ComfyUI_Electron-*-win.zip
-            dist/ComfyUI_Electron Setup *.exe
+            dist/ComfyUI_Electron_v*-win.zip
+            dist/ComfyUI_Electron*Setup*.exe
           retention-days: 30
