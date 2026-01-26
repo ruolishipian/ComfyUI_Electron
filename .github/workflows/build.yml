@@ -1,5 +1,5 @@
 # 工作流名称（适配你的ComfyUI_Electron项目）
-name: Electron 自动构建 & 发布
+name: Electron 自动构建 & 最小化发布
 
 on:
   push:
@@ -25,10 +25,9 @@ jobs:
           node-version: 18.x
           cache: 'npm'
 
-      - name: 安装项目依赖（使用国内镜像加速）
+      - name: 安装项目依赖（生产环境最小化依赖）
         run: |
-          npm config set registry https://registry.npmmirror.com
-          npm install
+          npm ci --production --no-optional
         shell: pwsh
 
       - name: 清理electron-builder缓存（避免旧配置干扰）
@@ -38,25 +37,119 @@ jobs:
         shell: pwsh
         continue-on-error: true
 
-      - name: 构建应用（使用项目中配置的构建命令）
-        run: npm run build
+      - name: 构建应用（最小化打包配置）
+        run: |
+          npm run build-minimal
         shell: pwsh
+        env:
+          NODE_ENV: production
 
       - name: 上传产物到Releases（仅打tag时执行）
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            dist/**
+            dist/ComfyUI_Electron_*-win.zip
+            dist/ComfyUI_Electron*Setup*.exe
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # 兜底：上传产物到Actions（即使没打tag也能手动下载）
-      - name: 上传打包产物到Actions Artifacts
+      - name: 上传最小化打包产物到Actions Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ComfyUI_Electron-Win64
+          name: ComfyUI_Electron-Minimal-Win64
           path: |
-            dist/**
+            dist/ComfyUI_Electron_*-win.zip
+            dist/ComfyUI_Electron*Setup*.exe
           retention-days: 30
+
+  build-linux:
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+
+      - name: 安装Node.js 18.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18.x
+          cache: 'npm'
+
+      - name: 安装项目依赖（生产环境最小化依赖）
+        run: |
+          npm ci --production --no-optional
+
+      - name: 清理electron-builder缓存
+        run: |
+          rm -rf ~/.cache/electron-builder
+          rm -rf node_modules/.cache/electron-builder
+        continue-on-error: true
+
+      - name: 构建Linux应用（最小化打包）
+        run: |
+          npm run build -- --linux --x64
+        env:
+          NODE_ENV: production
+
+      - name: 上传Linux产物到Releases
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            dist/ComfyUI_Electron_*-linux.AppImage
+            dist/ComfyUI_Electron_*-linux.deb
+            dist/ComfyUI_Electron_*-linux.tar.gz
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-mac:
+    runs-on: macos-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+
+      - name: 安装Node.js 18.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18.x
+          cache: 'npm'
+
+      - name: 安装项目依赖（生产环境最小化依赖）
+        run: |
+          npm ci --production --no-optional
+
+      - name: 清理electron-builder缓存
+        run: |
+          rm -rf ~/Library/Caches/electron-builder
+          rm -rf node_modules/.cache/electron-builder
+        continue-on-error: true
+
+      - name: 构建macOS应用（最小化打包）
+        run: |
+          npm run build -- --mac --x64
+        env:
+          NODE_ENV: production
+
+      - name: 上传macOS产物到Releases
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            dist/ComfyUI_Electron_*-mac.dmg
+            dist/ComfyUI_Electron_*-mac.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

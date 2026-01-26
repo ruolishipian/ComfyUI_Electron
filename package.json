@@ -11,7 +11,8 @@
     "pack": "electron-builder --dir",
     "build": "electron-builder --win --x64",
     "build-full": "electron-builder --win --x64",
-    "build-minimal": "electron-builder --win --x64 --config.buildResources=''"
+    "build-minimal": "electron-builder --win --x64 --config.asar=true --config.compression=maximum",
+    "build-all-platforms": "npm run build && npm run build -- --linux && npm run build -- --mac"
   },
   "dependencies": {
     "iconv-lite": "^0.6.3"
@@ -41,12 +42,13 @@
       "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
       "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
       "!**/{appveyor.yml,.travis.yml,circle.yml}",
-      "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
+      "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}",
+      "!test_params.js"
     ],
     "extraResources": [
       {
-        "from": " LICENSE",
-        "to": " LICENSE"
+        "from": "LICENSE",
+        "to": "LICENSE"
       }
     ],
     "asar": true,
