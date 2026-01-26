@@ -1,4 +1,3 @@
-# 工作流名称（适配你的ComfyUI_Electron项目）
 name: Electron 自动构建 & 最小化发布
 
 on:
@@ -9,9 +8,6 @@ on:
 jobs:
   build-windows:
     runs-on: windows-latest
-    # 给整个job配置GH_TOKEN，所有步骤都能访问
-    env:
-      GH_TOKEN: ${{ secrets.ComfyUI_Electron-Build-New }}
     steps:
       - name: 拉取代码（适配你的仓库）
         uses: actions/checkout@v4
@@ -25,7 +21,7 @@ jobs:
       - name: 安装项目依赖（使用国内镜像加速）
         run: |
           npm config set registry https://registry.npmmirror.com
-          npm install  # 移除--force，避免掩盖依赖冲突
+          npm install
         shell: pwsh
 
       - name: 清理electron-builder缓存（避免旧配置干扰）
@@ -36,26 +32,19 @@ jobs:
         continue-on-error: true
 
       - name: 打包Windows x64版本（最小化打包，禁用electron-builder自动发布）
-        run: npx electron-builder --win --x64 --config.asar=true --config.compression=maximum --publish never  # 关键：--publish never 禁用自动发布
+        run: npx electron-builder --win --x64 --config.asar=true --config.compression=maximum --publish never
         shell: pwsh
 
-      - name: 上传产物到Releases（仅打tag时执行）
+      - name: 上传产物到Releases
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: |
-            dist/ComfyUI_Electron_v*-win.zip
-            dist/ComfyUI_Electron*Setup*.exe
+          # 修复点1: 使用通配符匹配所有文件，解决文件名不匹配问题
+          files: dist/**
+          # 修复点2: 移除 generate_release_notes 或确保 Token 有权限
+          # 如果你想自动生成简介，请确保 Token 有 repo 权限
           generate_release_notes: true
         env:
-          GITHUB_TOKEN: ${{ secrets.ComfyUI_Electron-Build-New }}
-
-      # 兜底：上传产物到Actions（即使没打tag也能手动下载）
-      - name: 上传最小化打包产物到Actions Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: ComfyUI_Electron-Minimal-Win64
-          path: |
-            dist/ComfyUI_Electron_v*-win.zip
-            dist/ComfyUI_Electron*Setup*.exe
-          retention-days: 30
+          # 修复点3: 关键！必须使用 secrets.GITHUB_TOKEN，或者确保你的 PAT 有 repo 权限
+          # 如果你坚持用 PAT，请看下方的 "如果必须用 PAT" 说明
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
