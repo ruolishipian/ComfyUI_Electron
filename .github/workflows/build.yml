@@ -27,7 +27,7 @@ jobs:
 
       - name: 安装项目依赖（生产环境最小化依赖）
         run: |
-          npm ci --production --no-optional
+          npm ci --production=false --no-optional
         shell: pwsh
 
       - name: 清理electron-builder缓存（避免旧配置干扰）
@@ -82,9 +82,9 @@ jobs:
           node-version: 18.x
           cache: 'npm'
 
-      - name: 安装项目依赖（生产环境最小化依赖）
+      - name: 安装项目依赖（包含开发依赖）
         run: |
-          npm ci --production --no-optional
+          npm ci --production=false --no-optional
 
       - name: 清理electron-builder缓存
         run: |
@@ -127,9 +127,9 @@ jobs:
           node-version: 18.x
           cache: 'npm'
 
-      - name: 安装项目依赖（生产环境最小化依赖）
+      - name: 安装项目依赖（包含开发依赖）
         run: |
-          npm ci --production --no-optional
+          npm ci --production=false --no-optional
 
       - name: 清理electron-builder缓存
         run: |
