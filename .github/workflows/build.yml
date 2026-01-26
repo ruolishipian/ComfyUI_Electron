@@ -3,8 +3,7 @@ name: Electron 自动构建 & 最小化发布
 
 on:
   push:
-    branches: [ main, master ]  # 支持常见的主分支名称
-    tags: [ 'v*' ]
+    tags: [ 'v*' ]  # 仅在推送标签时触发，移除分支推送触发
   workflow_dispatch:
 
 jobs:
