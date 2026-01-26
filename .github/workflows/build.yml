@@ -25,7 +25,7 @@ jobs:
           node-version: 18.x
           cache: 'npm'
 
-      - name: 安装项目依赖（生产环境最小化依赖）
+      - name: 安装项目依赖（包含开发依赖）
         run: |
           npm ci --production=false --no-optional
         shell: pwsh
@@ -52,6 +52,8 @@ jobs:
             dist/ComfyUI_Electron_*-win.zip
             dist/ComfyUI_Electron*Setup*.exe
           generate_release_notes: true
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -107,6 +109,8 @@ jobs:
             dist/ComfyUI_Electron_*-linux.deb
             dist/ComfyUI_Electron_*-linux.tar.gz
           generate_release_notes: true
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -151,5 +155,7 @@ jobs:
             dist/ComfyUI_Electron_*-mac.dmg
             dist/ComfyUI_Electron_*-mac.zip
           generate_release_notes: true
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
