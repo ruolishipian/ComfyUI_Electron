@@ -15,6 +15,58 @@ let isComfyUISuccessStarted = false; // ComfyUI是否启动成功
 let currentView = 'log'; // 当前视图：log（日志）/comfyui（界面）
 const appDir = app.getAppPath(); // 启动器目录（软件目录）
 let isKillingProcess = false;   // 【新增】进程清理状态标记，防止重复调用
+let performanceMonitorInterval = null; // 性能监控定时器
+
+// ==================== 性能监控功能 ====================
+function startPerformanceMonitoring() {
+    if (performanceMonitorInterval) {
+        clearInterval(performanceMonitorInterval);
+    }
+    
+    performanceMonitorInterval = setInterval(() => {
+        if (comfyProcess && !comfyProcess.killed) {
+            const { exec } = require('child_process');
+            const os = require('os');
+            
+            // 获取系统资源使用情况
+            const cpuUsage = process.cpuUsage();
+            const memoryUsage = process.memoryUsage();
+            
+            // 获取系统总体内存信息
+            const totalMem = os.totalmem();
+            const freeMem = os.freemem();
+            const usedMem = totalMem - freeMem;
+            const memUsagePercent = ((usedMem / totalMem) * 100).toFixed(2);
+            
+            // 获取ComfyUI进程资源使用情况（仅在Windows上）
+            if (process.platform === 'win32') {
+                exec(`tasklist /FI "PID eq ${comfyProcess.pid}" /FO CSV /NH`, (err, stdout) => {
+                    if (!err && stdout) {
+                        // 解析输出获取CPU和内存使用情况
+                        const lines = stdout.trim().split('\r\n');
+                        if (lines.length > 0) {
+                            const processInfo = lines[0];
+                            // 发送性能信息到前端（如果需要显示）
+                            // mainWindow.webContents.send('performance-update', {
+                            //     cpu: cpuUsage.percent,
+                            //     memory: memoryUsage.heapUsed,
+                            //     systemMemory: memUsagePercent,
+                            //     processInfo: processInfo
+                            // });
+                        }
+                    }
+                });
+            }
+        }
+    }, 5000); // 每5秒更新一次
+}
+
+function stopPerformanceMonitoring() {
+    if (performanceMonitorInterval) {
+        clearInterval(performanceMonitorInterval);
+        performanceMonitorInterval = null;
+    }
+}
 
 // ==================== 核心工具函数 ====================
 // 【新增】清理终端ANSI转义码（颜色/光标移动等格式代码）
@@ -208,7 +260,27 @@ function generateStartFile() {
     }
     
     // 启动命令（支持带空格的Python路径/参数）
-    batContent += `"${config.pythonPath}" ${cmdArgs.join(' ')}\r\n`;
+    // 使用用户配置的参数，不再自动添加性能优化参数
+    let optimizedCmdArgs = [...cmdArgs];
+    
+    // 检查是否已有性能相关的参数，避免重复（仅作为检查，不自动添加）
+    const hasCpuVae = optimizedCmdArgs.some(arg => arg.includes("--cpu-vae"));
+    const hasLowVram = optimizedCmdArgs.some(arg => arg.includes("--lowvram")); 
+    const hasForceFp16 = optimizedCmdArgs.some(arg => arg.includes("--force-fp16"));
+    const hasFastMode = optimizedCmdArgs.some(arg => arg.includes("--fast"));
+    const hasDisableMetadata = optimizedCmdArgs.some(arg => arg.includes("--disable-metadata"));
+    const hasAutoLaunch = optimizedCmdArgs.some(arg => arg.includes("--auto-launch"));
+    const hasAsyncProcessing = optimizedCmdArgs.some(arg => arg.includes("--async-processing"));
+    const hasPinSharedMemory = optimizedCmdArgs.some(arg => arg.includes("--pin-shared-memory"));
+    
+    // 不再自动添加性能参数，让用户在自定义参数中自行添加
+    // 仅保留必要的参数：端口和用户自定义参数
+    if (config.customCmd && config.customCmd.trim()) {
+        const cmdParts = config.customCmd.trim().match(/"[^"]+"|\S+/g) || [];
+        optimizedCmdArgs.push(...cmdParts.map(part => part.replace(/"/g, '')));
+    }
+    
+    batContent += `"${config.pythonPath}" ${optimizedCmdArgs.join(' ')}\r\n`;
     batContent += `pause\r\n`; // 保留暂停，便于查看错误
 
     // GBK编码写入
@@ -234,6 +306,8 @@ function killComfyUIProcesses() {
     // 无进程需要清理时直接返回
     if (!comfyProcess || comfyProcess.killed) {
         isComfyUISuccessStarted = false;
+        // 停止性能监控
+        stopPerformanceMonitoring();
         return Promise.resolve();
     }
 
@@ -261,6 +335,8 @@ function killComfyUIProcesses() {
                     if (!pid) {
                         sendLog(`ℹ️ ComfyUI主进程PID为空，跳过温和终止`, 'info');
                         comfyProcess = null;
+                        // 停止性能监控
+                        stopPerformanceMonitoring();
                         cleanupSteps++;
                         resolveStep();
                         return;
@@ -282,11 +358,15 @@ function killComfyUIProcesses() {
                                     sendLog(`⚠️ 终止主进程失败：${errMsg}（建议以管理员身份运行启动器）`, 'warning');
                                 }
                                 comfyProcess = null;
+                                // 停止性能监控
+                                stopPerformanceMonitoring();
                                 cleanupSteps++;
                                 resolveStep();
                             });
                         } else {
                             comfyProcess = null;
+                            // 停止性能监控
+                            stopPerformanceMonitoring();
                             cleanupSteps++;
                             resolveStep();
                         }
@@ -294,6 +374,8 @@ function killComfyUIProcesses() {
                 } catch (e) {
                     sendLog(`⚠️ 终止主进程异常：${convertToUtf8(Buffer.from(e.message))}`, 'warning');
                     comfyProcess = null;
+                    // 停止性能监控
+                    stopPerformanceMonitoring();
                     cleanupSteps++;
                     resolveStep();
                 }
@@ -482,6 +564,9 @@ function startComfyUI() {
             detached: false
         });
 
+        // 启动性能监控
+        startPerformanceMonitoring();
+
         // 监听标准输出（日志）：精准类型识别
         comfyProcess.stdout.on('data', (data) => {
             const log = convertToUtf8(data);
@@ -518,6 +603,8 @@ function startComfyUI() {
             sendLog(log, code === 0 ? 'info' : 'error');
             comfyProcess = null;
             isComfyUISuccessStarted = false;
+            // 停止性能监控
+            stopPerformanceMonitoring();
             // 退出后切回日志视图
             if (currentView === 'comfyui' && mainWindow && !mainWindow.isDestroyed()) {
                 currentView = 'log';
@@ -529,11 +616,15 @@ function startComfyUI() {
         // 进程启动错误
         comfyProcess.on('error', (err) => {
             sendLog(`❌ 启动失败：${err.message}\n排查建议：1. 检查Python路径 2. 端口是否占用 3. 启动文件是否生成 4. 自定义命令参数是否完整`, 'error');
+            // 停止性能监控
+            stopPerformanceMonitoring();
             killComfyUIProcesses();
         });
 
     } catch (e) {
         sendLog(`❌ 启动异常：${e.message}`, 'error');
+        // 停止性能监控
+        stopPerformanceMonitoring();
         // 修复：仅在启动异常时终止进程，避免提前终止
         if (comfyProcess && !comfyProcess.killed) {
             killComfyUIProcesses();
@@ -570,8 +661,43 @@ function createMainWindow() {
             contextIsolation: false,        // 关闭隔离，确保ipcRenderer可用
             sandbox: false,                 // 关闭沙箱，避免JS执行限制
             webSecurity: false,             // 允许加载本地网页（解决ComfyUI资源加载）
-            allowRunningInsecureContent: true // 允许加载http本地服务
-        }
+            allowRunningInsecureContent: true, // 允许加载http本地服务
+            // 添加性能优化选项
+            experimentalFeatures: true,     // 启用实验性功能
+            offscreen: false,               // 禁用离屏渲染
+            spellcheck: false,              // 禁用拼写检查
+            scrollBounce: false,            // 禁用弹性滚动效果
+            enableWebSQL: false,            // 禁用WebSQL
+            javascript: true,               // 启用JavaScript（必需）
+            images: true,                   // 启用图像加载
+            textAreasAreResizable: false,   // 禁用文本框缩放
+            webgl: true,                    // 启用WebGL（对图形处理很重要）
+            backgroundThrottling: false     // 禁用后台标签页节流
+        },
+        // 添加硬件加速选项
+        transparent: false,                 // 禁用透明背景以提高性能
+        frame: true,                        // 使用原生窗口框架
+        // 启用硬件加速
+        webgl: true,
+        plugins: true,
+        experimentalCanvasFeatures: true,
+        hardwareAcceleration: true          // 启用硬件加速
+    });
+
+    // 设置额外的性能优化
+    mainWindow.setBackgroundColor('#1e1e1e'); // 设置背景色，减少渲染负担
+    mainWindow.setAutoHideMenuBar(true); // 自动隐藏菜单栏
+    mainWindow.setMenuBarVisibility(false); // 隐藏菜单栏
+    
+    // 在加载页面前应用额外的webPreferences
+    mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+        callback({
+            responseHeaders: {
+                ...details.responseHeaders,
+                'Cross-Origin-Embedder-Policy': ['require-corp'],
+                'Cross-Origin-Opener-Policy': ['same-origin']
+            }
+        });
     });
 
     // 加载日志页面（默认视图）
@@ -747,6 +873,23 @@ ipcMain.on('stop-comfyui', function() {
 // 手动加载ComfyUI界面（备用）
 ipcMain.on('load-comfyui-in-window', loadComfyUIInWindow);
 
+// ==================== 内存清理机制 ====================
+function startMemoryCleanup() {
+    // 设置定期垃圾回收和内存清理
+    setInterval(() => {
+        try {
+            // 尝试触发垃圾回收（如果可用）
+            if (global.gc) {
+                global.gc();
+                sendLog('🧹 执行内存垃圾回收', 'info');
+            }
+        } catch (e) {
+            // 如果没有启用--expose-gc标志，忽略错误
+            // sendLog('⚠️ 垃圾回收不可用', 'warning');
+        }
+    }, 300000); // 每5分钟执行一次
+}
+
 // ==================== 应用生命周期（防多实例+进程清理） ====================
 // 防止多实例启动
 const gotTheLock = app.requestSingleInstanceLock();
@@ -765,6 +908,7 @@ if (!gotTheLock) {
         loadConfig();          // 加载配置
         createMainWindow();    // 创建主窗口
         createChineseMenu();   // 创建中文菜单
+        startMemoryCleanup();  // 启动内存清理机制
         // 启动器就绪日志
         sendLog('✅ ComfyUI启动器就绪，请先完成配置再启动', 'info');
     });

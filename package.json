@@ -7,7 +7,7 @@
   "license": "MIT",
   "homepage": "https://github.com/ruolishipian/ComfyUI_Electron",
   "scripts": {
-    "start": "electron .",
+    "start": "electron . --js-flags=\"--expose-gc\"",
     "pack": "electron-builder --dir",
     "build": "electron-builder",
     "build:win": "electron-builder --win --x64"

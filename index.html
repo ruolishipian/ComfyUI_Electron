@@ -64,6 +64,10 @@
             height: calc(100vh - 45px - 30px);
             border: none;
             display: none;
+            /* 添加性能优化样式 */
+            will-change: transform;
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
         }
 
         /* 日志区域（默认日志视图） */
@@ -75,6 +79,10 @@
             font-size: 14px;
             line-height: 1.5;
             background: #1e1e1e;
+            /* 启用硬件加速 */
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
+            will-change: scroll-position;
         }
 
         /* ComfyUI下的可隐藏日志面板 */
@@ -89,6 +97,9 @@
             transition: height 0.3s ease;
             overflow: hidden;
             z-index: 9989;
+            /* 启用硬件加速 */
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
         }
 
         #log-resize-bar {
@@ -431,7 +442,13 @@
     </div>
 
     <!-- ComfyUI视图容器 -->
-    <iframe id="comfyui-container" frameborder="0"></iframe>
+    <iframe id="comfyui-container" 
+            frameborder="0"
+            allow="accelerometer; camera; clipboard-read; clipboard-write; display-capture; encrypted-media; geolocation; gyroscope; microphone; midi; usb;"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-downloads allow-popups allow-modals"
+            loading="eager"
+            fetchpriority="high"
+            scrolling="auto"></iframe>
 
     <!-- 日志区域（默认视图） -->
     <div id="log-container"></div>
@@ -517,6 +534,7 @@
                 <input type="text" id="custom-cmd" class="config-input" placeholder="示例：--lowvram --force-upcast-attention">
             </div>
             <span class="tips-small">无需填写--port，端口由上方配置自动拼接</span>
+            <span class="tips-small">性能优化参数示例：--cpu-vae --lowvram --force-fp16 --fast --disable-metadata --async-processing --pin-shared-memory</span>
         </div>
 
         <!-- 6. 插件检测天数 -->
@@ -622,20 +640,6 @@
             }
 
             // ==================== 日志控制 - 关键修改：重构renderLog函数 ====================
-            function toggleAutoScroll() {
-                isAutoScroll = !isAutoScroll;
-                if (isAutoScroll) {
-                    autoScrollBtn.textContent = '📜 自动滚动：开';
-                    autoScrollBtn.classList.remove('off');
-                    logContainer.scrollTop = logContainer.scrollHeight;
-                    comfyuiLogContent.scrollTop = comfyuiLogContent.scrollHeight;
-                } else {
-                    autoScrollBtn.textContent = '📜 自动滚动：关';
-                    autoScrollBtn.classList.add('off');
-                }
-            }
-
-            // 重构日志渲染函数：修复格式错乱，正确映射日志类型 + 【优化】启动命令样式
             function renderLog(logContent, type = 'normal') {
                 // 过滤空日志
                 if (!logContent || logContent.trim() === '') return;
@@ -683,14 +687,39 @@
                 // 创建ComfyUI日志面板的日志行（克隆）
                 const logLinePanel = logLine.cloneNode(true);
 
-                // 添加到容器
+                // 添加到容器 - 使用批量更新减少DOM操作
                 logContainer.appendChild(logLine);
                 comfyuiLogContent.appendChild(logLinePanel);
 
-                // 自动滚动
+                // 限制日志数量，防止过多日志造成性能问题
+                const maxLogLines = 1000; // 最多保留1000条日志
+                while (logContainer.children.length > maxLogLines) {
+                    logContainer.removeChild(logContainer.firstChild);
+                }
+                while (comfyuiLogContent.children.length > maxLogLines) {
+                    comfyuiLogContent.removeChild(comfyuiLogContent.firstChild);
+                }
+
+                // 自动滚动 - 使用节流减少性能影响
                 if (isAutoScroll) {
+                    // 使用requestAnimationFrame优化滚动性能
+                    requestAnimationFrame(() => {
+                        logContainer.scrollTop = logContainer.scrollHeight;
+                        comfyuiLogContent.scrollTop = comfyuiLogContent.scrollHeight;
+                    });
+                }
+            }
+
+            function toggleAutoScroll() {
+                isAutoScroll = !isAutoScroll;
+                if (isAutoScroll) {
+                    autoScrollBtn.textContent = '📜 自动滚动：开';
+                    autoScrollBtn.classList.remove('off');
                     logContainer.scrollTop = logContainer.scrollHeight;
                     comfyuiLogContent.scrollTop = comfyuiLogContent.scrollHeight;
+                } else {
+                    autoScrollBtn.textContent = '📜 自动滚动：关';
+                    autoScrollBtn.classList.add('off');
                 }
             }
 
