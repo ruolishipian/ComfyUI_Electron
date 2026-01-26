@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* http://127.0.0.1:*; script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* http://127.0.0.1:*; style-src 'self' 'unsafe-inline' http://localhost:* http://127.0.0.1:*; connect-src 'self' http://localhost:* http://127.0.0.1:*; img-src 'self' blob: data: http://localhost:* http://127.0.0.1:*; media-src 'self' blob: data: http://localhost:* http://127.0.0.1:*; frame-src 'self' http://localhost:* http://127.0.0.1:*; child-src 'self' http://localhost:* http://127.0.0.1:*;">
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"> <!-- 禁用缩放以减少资源使用 -->
+    <title>ComfyUI启动器 - 日志视图</title>
+    <style>
+        /* 全局样式 - 优化版以平衡资源使用和显示效果 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; /* 简化字体栈 */
+        }
+
+        body {
+            background: #1e1e1e;
+            color: #ffffff;
+            height: 100vh;
+            overflow: hidden;
+            /* 启用基本硬件加速 */
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* 顶部操作栏 - 修复：调整为右对齐 */
+        #top-bar {
+            height: 45px;
+            background: #2d2d2d;
+            border-bottom: 1px solid #444444;
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            gap: 10px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 9990;
+            justify-content: flex-end; /* 关键：按钮右对齐 */
+            /* 保持简单，避免复杂动画 */
+        }
+
+        .btn {
+            padding: 6px 15px;
+            background: #3d3d3d;
+            color: #ffffff;
+            border: 1px solid #555555;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease; /* 保留基本过渡效果 */
+        }
+
+            .btn:hover {
+                background: #4ec9b0;
+                color: #1e1e1e;
+                border-color: #4ec9b0;
+            }
+
+        /* ComfyUI视图容器（iframe） */
+        #comfyui-container {
+            position: fixed;
+            top: 45px;
+            left: 0;
+            width: 100%;
+            height: calc(100vh - 45px - 30px);
+            border: none;
+            display: none;
+            /* 启用基本的硬件加速 */
+            will-change: auto;
+            transform: none;
+            -webkit-transform: none;
+            /* 确保iframe可见 */
+            visibility: visible;
+            opacity: 1;
+            z-index: 1;
+        }
+
+        /* 日志区域（默认日志视图） */
+        #log-container {
+            height: calc(100vh - 45px - 30px);
+            margin-top: 45px;
+            padding: 10px;
+            overflow-y: auto;
+            font-size: 14px;
+            line-height: 1.5;
+            background: #1e1e1e;
+            /* 启用基本的硬件加速 */
+            transform: none;
+            -webkit-transform: none;
+            will-change: auto;
+        }
+
+        /* ComfyUI下的可隐藏日志面板 */
+        #comfyui-log-panel {
+            position: fixed;
+            bottom: 30px;
+            left: 0;
+            width: 100%;
+            height: 0;
+            background: #1e1e1e;
+            border-top: 1px solid #444;
+            transition: height 0.3s ease; /* 保留基本的过渡效果 */
+            overflow: hidden;
+            z-index: 9989;
+            /* 启用基本的硬件加速 */
+            transform: none;
+            -webkit-transform: none;
+        }
+
+        #log-resize-bar {
+            width: 100%;
+            height: 5px;
+            background: #4ec9b0;
+            cursor: ns-resize;
+            user-select: none;
+        }
+
+        #comfyui-log-content {
+            width: 100%;
+            height: calc(100% - 20px);
+            padding: 10px;
+            overflow-y: auto;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* 日志控制栏 */
+        #log-control {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 30px;
+            background: #2d2d2d;
+            border-top: 1px solid #444444;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            z-index: 9990;
+        }
+
+        #clear-log {
+            padding: 0 10px;
+            height: 25px;
+            background: #f44747;
+            color: #ffffff;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-right: 10px;
+        }
+
+        #auto-scroll-btn {
+            padding: 0 10px;
+            height: 25px;
+            background: #4ec9b0;
+            color: #1e1e1e;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-right: 10px;
+            transition: background 0.2s ease, color 0.2s ease; /* 保留基本过渡效果 */
+        }
+
+            #auto-scroll-btn.off {
+                background: #888888;
+                color: #ffffff;
+            }
+
+        #toggle-log-panel {
+            padding: 0 10px;
+            height: 25px;
+            background: #6a9955;
+            color: #ffffff;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-right: 10px;
+        }
+
+        .tips {
+            color: #999999;
+            font-size: 12px;
+        }
+
+        /* 配置面板遮罩 */
+        #config-mask {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 10000;
+            display: none;
+        }
+
+        #config-panel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            min-width: 600px;
+            min-height: 400px;
+            max-width: 90%;
+            max-height: 90vh;
+            width: 600px;
+            height: auto;
+            background: #2d2d2d;
+            border: 2px solid #447477;
+            border-radius: 8px;
+            padding: 20px;
+            z-index: 10001;
+            display: none;
+            resize: both;
+            overflow: auto;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5); /* 重新启用阴影 */
+            /* 保持简单 */
+        }
+
+        #config-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #555555;
+            cursor: move;
+            user-select: none;
+        }
+
+            #config-header h2 {
+                color: #4ec9b0;
+                font-size: 18px;
+                margin: 0;
+            }
+
+        .config-close-btn {
+            padding: 5px 10px;
+            background: #f44747;
+            color: #ffffff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        /* 配置项样式 */
+        .config-item {
+            margin-bottom: 18px;
+        }
+
+            .config-item label {
+                font-size: 14px;
+                margin-bottom: 8px;
+                color: #cccccc;
+                display: block;
+            }
+
+        .config-input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            width: 100%;
+        }
+
+        .config-input {
+            flex: 1;
+            padding: 8px 10px;
+            background: #3d3d3d;
+            border: 1px solid #555555;
+            color: #ffffff;
+            border-radius: 4px;
+            font-size: 13px;
+            min-width: 0;
+        }
+
+        .config-select {
+            flex: 1;
+            padding: 8px 10px;
+            background: #3d3d3d;
+            border: 1px solid #555555;
+            color: #ffffff;
+            border-radius: 4px;
+            font-size: 13px;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+            background-size: 16px;
+            padding-right: 30px;
+        }
+
+        .config-btn {
+            padding: 8px 15px;
+            background: #4ec9b0;
+            color: #1e1e1e;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+            .config-btn:hover {
+                background: #38a890;
+            }
+
+        /* 配置操作按钮 */
+        #config-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 25px;
+            flex-wrap: wrap;
+        }
+
+            #config-actions button {
+                padding: 10px 20px;
+                font-size: 14px;
+            }
+
+        /* 配置提示样式 */
+        .tips-small {
+            font-size: 12px;
+            color: #999999;
+            margin-top: 5px;
+            display: block;
+        }
+
+        .must-tip {
+            color: #ffd700;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .status-text {
+            font-size: 12px;
+            margin-top: 5px;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .status-success {
+            color: #6a9955;
+            background: rgba(106, 153, 85, 0.2);
+        }
+
+        .status-error {
+            color: #f44747;
+            background: rgba(244, 71, 71, 0.2);
+        }
+
+        /* 日志行样式 - 优化版 */
+        .log-line {
+            margin: 2px 0;
+            white-space: pre-wrap; /* 保留空格和换行 */
+            word-break: break-all;
+            font-family: Consolas, "Courier New", monospace; /* 等宽字体，日志更整齐 */
+            transition: none; /* 简单过渡 */
+        }
+
+            .log-line.info {
+                color: #4CAF50; /* 绿色 - 正常信息 */
+            }
+
+            .log-line.warning {
+                color: #FFC107; /* 黄色 - 提醒/警告 */
+            }
+
+            .log-line.error {
+                color: #F44336; /* 红色 - 错误/失败 */
+            }
+
+            .log-line.success {
+                color: #6a9955; /* 深绿色 - 成功提示 */
+            }
+
+            .log-line.normal {
+                color: #ffffff; /* 白色 - 普通日志 */
+            }
+
+        /* 响应式布局 */
+        @media (max-width: 768px) {
+            #config-panel {
+                min-width: 90%;
+                padding: 15px;
+            }
+
+            .config-input-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .config-btn {
+                width: 100%;
+            }
+
+            #top-bar {
+                flex-wrap: wrap;
+                height: auto;
+                padding: 10px;
+                justify-content: flex-end; /* 响应式下保持右对齐 */
+            }
+
+            #log-container {
+                height: calc(100vh - 80px - 30px);
+                margin-top: 80px;
+            }
+
+            #comfyui-container {
+                height: calc(100vh - 80px - 30px);
+                top: 80px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部操作栏 - 按钮位置不变，通过CSS右对齐 -->
+    <div id="top-bar">
+        <button class="btn" onclick="showConfigPanel()">⚙️ 配置中心</button>
+        <button class="btn" onclick="startComfyUI()">▶️ 启动ComfyUI</button>
+        <button class="btn" onclick="stopComfyUI()">⏹️ 停止ComfyUI</button>
+        <button class="btn" onclick="switchToLogView()">📋 日志视图</button>
+        <button class="btn" onclick="switchToComfyUIView()">🖼️ ComfyUI视图</button>
+    </div>
+
+    <!-- ComfyUI视图容器 -->
+    <iframe id="comfyui-container" 
+            frameborder="0"
+            allow="accelerometer; camera; clipboard-read; clipboard-write; display-capture; encrypted-media; geolocation; gyroscope; microphone; midi; usb; fullscreen; web-share; payment;"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-downloads allow-popups allow-modals allow-top-navigation-by-user-activation allow-presentation"
+            loading="eager"
+            fetchpriority="high"
+            scrolling="auto"
+            style="background: #1e1e1e;"></iframe>
+
+    <!-- 日志区域（默认视图） -->
+    <div id="log-container"></div>
+
+    <!-- ComfyUI下的可隐藏日志面板 -->
+    <div id="comfyui-log-panel">
+        <div id="log-resize-bar"></div>
+        <div id="comfyui-log-content"></div>
+    </div>
+
+    <!-- 日志控制栏 -->
+    <div id="log-control">
+        <button id="clear-log" onclick="clearLogs()">🗑️ 清空日志</button>
+        <button id="auto-scroll-btn" onclick="toggleAutoScroll()">📜 自动滚动：开</button>
+        <button id="toggle-log-panel" onclick="toggleLogPanel()">🔽 展开日志面板</button>
+        <span class="tips">💡 ComfyUI启动成功后自动加载界面 | 快捷键：Ctrl+Shift+C（配置）、Ctrl+L（清空日志）</span>
+    </div>
+
+    <!-- 配置面板遮罩 -->
+    <div id="config-mask" onclick="hideConfigPanel()"></div>
+
+    <!-- 配置面板 -->
+    <div id="config-panel">
+        <div id="config-header">
+            <h2>⚙️ ComfyUI 启动配置</h2>
+            <button class="config-close-btn" onclick="hideConfigPanel()">× 关闭</button>
+        </div>
+
+        <!-- 1. Python路径配置 -->
+        <div class="config-item">
+            <label>1. Python可执行文件路径（必填）</label>
+            <div class="config-input-group">
+                <input type="text" id="python-path" class="config-input" placeholder="请选择python.exe文件...">
+                <button class="config-btn" onclick="selectPath('python')">📂 选择Python</button>
+            </div>
+            <span class="must-tip">⚠️ 必须选择对应ComfyUI的Python环境</span>
+            <span class="tips-small">示例：D:\ai\comfyui\python_embeded\python.exe</span>
+            <div id="python-status" class="status-text"></div>
+        </div>
+
+        <!-- 2. ComfyUI目录配置 -->
+        <div class="config-item">
+            <label>2. ComfyUI本体目录（必填）</label>
+            <div class="config-input-group">
+                <input type="text" id="comfyui-dir" class="config-input" placeholder="请选择包含main.py的ComfyUI目录...">
+                <button class="config-btn" onclick="selectPath('comfyui')">📂 选择目录</button>
+            </div>
+            <span class="must-tip">⚠️ 必须选择包含main.py的目录</span>
+            <span class="tips-small">示例：D:\ai\ComfyUI 或 D:\ai\comfyui\ComfyUI</span>
+            <div id="comfyui-status" class="status-text"></div>
+        </div>
+
+        <!-- 3. 启动端口配置 -->
+        <div class="config-item">
+            <label>3. 启动端口</label>
+            <div class="config-input-group">
+                <input type="number" id="comfy-port" class="config-input" placeholder="8188" value="8188" min="1" max="65535">
+            </div>
+            <span class="tips-small">默认8188，若端口被占用请修改（1-65535）</span>
+            <div id="port-status" class="status-text"></div>
+        </div>
+
+        <!-- 4. 代理配置 -->
+        <div class="config-item">
+            <label>4. 代理设置</label>
+            <div class="config-input-group">
+                <select id="proxy-mode" class="config-select" onchange="toggleProxyInput()">
+                    <option value="disabled">❌ 不启用代理（默认）</option>
+                    <option value="auto">✅ 自动代理（127.0.0.1:7890）</option>
+                    <option value="custom">🔧 自定义代理地址</option>
+                </select>
+            </div>
+            <div id="proxy-url-group" class="config-input-group" style="display: none; margin-top: 10px;">
+                <input type="text" id="proxy-url" class="config-input" placeholder="示例：http://127.0.0.1:7890">
+            </div>
+            <span class="tips-small">代理仅用于依赖安装和模型下载，不影响本地访问</span>
+        </div>
+
+        <!-- 5. 自定义启动参数 -->
+        <div class="config-item">
+            <label>5. 自定义启动参数</label>
+            <div class="config-input-group">
+                <input type="text" id="custom-cmd" class="config-input" placeholder="示例：--lowvram --force-upcast-attention">
+            </div>
+            <span class="tips-small">无需填写--port，端口由上方配置自动拼接</span>
+            <span class="tips-small">性能优化参数示例：--cpu-vae --lowvram --force-fp16 --fast --disable-metadata --async-processing --pin-shared-memory</span>
+        </div>
+
+        <!-- 6. 插件检测天数 -->
+        <div class="config-item">
+            <label>6. 插件检测天数</label>
+            <div class="config-input-group">
+                <input type="number" id="plugin-check-days" class="config-input" value="7" min="1" max="30">
+            </div>
+            <span class="tips-small">仅检测指定天数内修改/新增的插件（默认7天）</span>
+        </div>
+
+        <!-- 配置操作按钮 -->
+        <div id="config-actions">
+            <button class="config-btn" onclick="checkConfig()">🔍 检测配置</button>
+            <button class="config-btn" onclick="saveConfig()">💾 保存配置</button>
+            <button class="config-btn" onclick="hideConfigPanel()">❌ 取消</button>
+        </div>
+    </div>
+
+    <script>
+        try {
+            const { ipcRenderer } = require('electron');
+            const fs = require('fs');
+            const path = require('path');
+
+            // DOM元素
+            const logContainer = document.getElementById('log-container');
+            const comfyuiContainer = document.getElementById('comfyui-container');
+            const comfyuiLogPanel = document.getElementById('comfyui-log-panel');
+            const comfyuiLogContent = document.getElementById('comfyui-log-content');
+            const logResizeBar = document.getElementById('log-resize-bar');
+            const configPanel = document.getElementById('config-panel');
+            const configMask = document.getElementById('config-mask');
+            const configHeader = document.getElementById('config-header');
+            const autoScrollBtn = document.getElementById('auto-scroll-btn');
+            const toggleLogPanelBtn = document.getElementById('toggle-log-panel');
+            const pythonPathInput = document.getElementById('python-path');
+            const comfyuiDirInput = document.getElementById('comfyui-dir');
+            const comfyPortInput = document.getElementById('comfy-port');
+            const proxyModeSelect = document.getElementById('proxy-mode');
+            const proxyUrlGroup = document.getElementById('proxy-url-group');
+            const proxyUrlInput = document.getElementById('proxy-url');
+            const customCmdInput = document.getElementById('custom-cmd');
+            const pluginCheckDaysInput = document.getElementById('plugin-check-days');
+            const pythonStatus = document.getElementById('python-status');
+            const comfyuiStatus = document.getElementById('comfyui-status');
+            const portStatus = document.getElementById('port-status');
+
+            // 全局变量
+            let isAutoScroll = true;
+            let isDragging = false;
+            let dragStartX, dragStartY, panelStartX, panelStartY;
+            let isLogResizing = false;
+            let logPanelHeight = 0;
+
+            // ==================== 配置面板拖拽 ====================
+            function initConfigDrag() {
+                configHeader.addEventListener('mousedown', (e) => {
+                    isDragging = true;
+                    dragStartX = e.clientX;
+                    dragStartY = e.clientY;
+                    const panelRect = configPanel.getBoundingClientRect();
+                    panelStartX = panelRect.left;
+                    panelStartY = panelRect.top;
+                    e.preventDefault();
+                });
+
+                document.addEventListener('mousemove', (e) => {
+                    if (!isDragging) return;
+                    const dx = e.clientX - dragStartX;
+                    const dy = e.clientY - dragStartY;
+                    configPanel.style.left = `${panelStartX + dx}px`;
+                    configPanel.style.top = `${panelStartY + dy}px`;
+                    configPanel.style.transform = 'none';
+                });
+
+                document.addEventListener('mouseup', () => {
+                    isDragging = false;
+                });
+            }
+
+            // ==================== 日志面板拖拽调整高度 ====================
+            function initLogResize() {
+                logResizeBar.addEventListener('mousedown', (e) => {
+                    isLogResizing = true;
+                    logPanelHeight = comfyuiLogPanel.offsetHeight;
+                    e.preventDefault();
+                });
+
+                document.addEventListener('mousemove', (e) => {
+                    if (!isLogResizing) return;
+                    const dy = logPanelHeight + (logResizeBar.getBoundingClientRect().top - e.clientY);
+                    // 限制高度范围：最小100px，最大屏幕高度-100px
+                    const newHeight = Math.max(100, Math.min(window.innerHeight - 100, dy));
+                    comfyuiLogPanel.style.height = `${newHeight}px`;
+                    // 调整ComfyUI容器高度
+                    comfyuiContainer.style.height = `calc(100vh - 45px - 30px - ${newHeight}px)`;
+                });
+
+                document.addEventListener('mouseup', () => {
+                    isLogResizing = false;
+                });
+            }
+
+            // ==================== 日志控制 - 关键修改：重构renderLog函数 ====================
+            function renderLog(logContent, type = 'normal') {
+                // 过滤空日志
+                if (!logContent || logContent.trim() === '') return;
+
+                // 定义日志类型映射（和主进程保持一致）
+                const typeMap = {
+                    'info': 'info',       // 绿色
+                    'warning': 'warning', // 黄色
+                    'error': 'error',     // 红色
+                    'success': 'success', // 深绿色
+                    'normal': 'normal'    // 白色（默认）
+                };
+                // 确保类型有效，默认normal
+                const logType = typeMap[type] || 'normal';
+
+                // 处理日志内容：仅转义HTML特殊字符，保留原始空格和换行
+                const escapeHtml = (text) => {
+                    return text
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#039;');
+                };
+
+                // 拆分主进程发送的日志（主进程已带时间戳，无需重复添加）
+                const escapedContent = escapeHtml(logContent);
+
+                // 创建日志行元素（默认日志容器）
+                const logLine = document.createElement('div');
+                logLine.className = `log-line ${logType}`;
+                logLine.textContent = escapedContent; // 使用textContent避免HTML注入，保留格式
+
+                // 【新增】给启动命令相关日志添加特殊样式
+                if (logContent.includes('启动命令详情') || logContent.includes('Python路径') ||
+                    logContent.includes('启动参数') || logContent.includes('完整Python命令') ||
+                    logContent.includes('BAT文件路径') || logContent.includes('BAT执行命令') ||
+                    logContent.includes('工作目录') || logContent.includes('端口') ||
+                    logContent.includes('代理模式') || logContent.includes('自定义参数')) {
+                    logLine.style.background = 'rgba(76, 175, 80, 0.1)';
+                    logLine.style.borderLeft = '3px solid #4CAF50';
+                    logLine.style.paddingLeft = '5px';
+                }
+
+                // 创建ComfyUI日志面板的日志行（克隆）
+                const logLinePanel = logLine.cloneNode(true);
+
+                // 添加到容器 - 使用批量更新减少DOM操作
+                logContainer.appendChild(logLine);
+                comfyuiLogContent.appendChild(logLinePanel);
+
+                // 限制日志数量，防止过多日志造成性能问题
+                const maxLogLines = 1000; // 最多保留1000条日志
+                while (logContainer.children.length > maxLogLines) {
+                    logContainer.removeChild(logContainer.firstChild);
+                }
+                while (comfyuiLogContent.children.length > maxLogLines) {
+                    comfyuiLogContent.removeChild(comfyuiLogContent.firstChild);
+                }
+
+                // 自动滚动 - 使用节流减少性能影响
+                if (isAutoScroll) {
+                    // 使用requestAnimationFrame优化滚动性能
+                    requestAnimationFrame(() => {
+                        logContainer.scrollTop = logContainer.scrollHeight;
+                        comfyuiLogContent.scrollTop = comfyuiLogContent.scrollHeight;
+                    });
+                }
+            }
+
+            function toggleAutoScroll() {
+                isAutoScroll = !isAutoScroll;
+                if (isAutoScroll) {
+                    autoScrollBtn.textContent = '📜 自动滚动：开';
+                    autoScrollBtn.classList.remove('off');
+                    logContainer.scrollTop = logContainer.scrollHeight;
+                    comfyuiLogContent.scrollTop = comfyuiLogContent.scrollHeight;
+                } else {
+                    autoScrollBtn.textContent = '📜 自动滚动：关';
+                    autoScrollBtn.classList.add('off');
+                }
+            }
+
+            function clearLogs() {
+                if (confirm('⚠️ 确认清空所有日志吗？')) {
+                    logContainer.innerHTML = '';
+                    comfyuiLogContent.innerHTML = '';
+                    renderLog('✅ 日志已清空', 'success');
+                }
+            }
+
+            // ==================== 日志面板展开/收起 ====================
+            function toggleLogPanel() {
+                if (comfyuiLogPanel.style.height === '0px' || !comfyuiLogPanel.style.height) {
+                    // 展开：默认高度300px
+                    comfyuiLogPanel.style.height = '300px';
+                    comfyuiContainer.style.height = 'calc(100vh - 45px - 30px - 300px)';
+                    toggleLogPanelBtn.textContent = '🔼 收起日志面板';
+                } else {
+                    // 收起
+                    comfyuiLogPanel.style.height = '0px';
+                    comfyuiContainer.style.height = 'calc(100vh - 45px - 30px)';
+                    toggleLogPanelBtn.textContent = '🔽 展开日志面板';
+                }
+            }
+
+            // ==================== 配置面板交互 ====================
+            function showConfigPanel() {
+                ipcRenderer.send('get-config');
+                configPanel.style.display = 'block';
+                configMask.style.display = 'block';
+                if (configPanel.style.transform === 'none') {
+                    configPanel.style.left = '50%';
+                    configPanel.style.top = '50%';
+                    configPanel.style.transform = 'translate(-50%, -50%)';
+                }
+            }
+
+            function hideConfigPanel() {
+                configPanel.style.display = 'none';
+                configMask.style.display = 'none';
+            }
+
+            function toggleProxyInput() {
+                proxyUrlGroup.style.display = proxyModeSelect.value === 'custom' ? 'flex' : 'none';
+            }
+
+            // ==================== 配置校验 ====================
+            function checkPythonPath() {
+                const pathVal = pythonPathInput.value.trim();
+                pythonStatus.className = 'status-text';
+                if (!pathVal) {
+                    pythonStatus.textContent = '❌ 请选择Python可执行文件';
+                    pythonStatus.classList.add('status-error');
+                    return false;
+                }
+                if (!fs.existsSync(pathVal) || !pathVal.toLowerCase().endsWith('.exe')) {
+                    pythonStatus.textContent = '❌ Python文件不存在或格式错误';
+                    pythonStatus.classList.add('status-error');
+                    return false;
+                }
+                pythonStatus.textContent = '✅ Python路径有效';
+                pythonStatus.classList.add('status-success');
+                return true;
+            }
+
+            function checkComfyuiDir() {
+                const dir = comfyuiDirInput.value.trim();
+                comfyuiStatus.className = 'status-text';
+                if (!dir) {
+                    comfyuiStatus.textContent = '❌ 请选择ComfyUI目录';
+                    comfyuiStatus.classList.add('status-error');
+                    return false;
+                }
+                if (!fs.existsSync(dir) || !fs.existsSync(path.join(dir, 'main.py'))) {
+                    comfyuiStatus.textContent = '❌ 目录无效或无main.py文件';
+                    comfyuiStatus.classList.add('status-error');
+                    return false;
+                }
+                comfyuiStatus.textContent = '✅ ComfyUI目录有效';
+                comfyuiStatus.classList.add('status-success');
+                return true;
+            }
+
+            function checkPort() {
+                const port = parseInt(comfyPortInput.value);
+                portStatus.className = 'status-text';
+                if (isNaN(port) || port < 1 || port > 65535) {
+                    portStatus.textContent = '❌ 端口必须是1-65535之间的数字';
+                    portStatus.classList.add('status-error');
+                    return false;
+                }
+                portStatus.textContent = '✅ 端口合法';
+                portStatus.classList.add('status-success');
+                return true;
+            }
+
+            function checkConfig() {
+                const isPythonValid = checkPythonPath();
+                const isComfyuiValid = checkComfyuiDir();
+                const isPortValid = checkPort();
+                const checkDays = parseInt(pluginCheckDaysInput.value);
+
+                if (isNaN(checkDays) || checkDays < 1 || checkDays > 30) {
+                    alert('❌ 插件检测天数必须是1-30之间的数字！');
+                    return false;
+                }
+
+                if (isPythonValid && isComfyuiValid && isPortValid) {
+                    alert('✅ 所有配置检测通过！');
+                    return true;
+                } else {
+                    alert('❌ 配置检测失败，请根据提示修正！');
+                    return false;
+                }
+            }
+
+            // ==================== 配置操作 ====================
+            function selectPath(type) {
+                ipcRenderer.send('select-path', type);
+                ipcRenderer.once('path-selected', (_, data) => {
+                    if (data && data.path) {
+                        if (data.type === 'python') {
+                            pythonPathInput.value = data.path;
+                            checkPythonPath();
+                        } else if (data.type === 'comfyui') {
+                            comfyuiDirInput.value = data.path;
+                            checkComfyuiDir();
+                        }
+                        renderLog(`✅ 已选择${data.type === 'python' ? 'Python路径' : 'ComfyUI目录'}: ${data.path}`, 'success');
+                    } else {
+                        renderLog('ℹ️ 用户取消了路径选择', 'info');
+                    }
+                });
+            }
+
+            function saveConfig() {
+                if (!checkConfig()) return;
+                const newConfig = {
+                    pythonPath: pythonPathInput.value.trim(),
+                    comfyuiDir: comfyuiDirInput.value.trim(),
+                    port: parseInt(comfyPortInput.value),
+                    proxy: proxyModeSelect.value,
+                    proxyUrl: proxyUrlInput.value.trim(),
+                    customCmd: customCmdInput.value.trim(),
+                    pluginCheckDays: parseInt(pluginCheckDaysInput.value)
+                };
+                ipcRenderer.send('save-config', newConfig);
+                ipcRenderer.once('config-saved', (_, success, msg) => {
+                    if (success) {
+                        renderLog('✅ 配置保存成功', 'success');
+                        alert('✅ 配置保存成功！');
+                        hideConfigPanel();
+                    } else {
+                        renderLog(`❌ 配置保存失败：${msg}`, 'error');
+                        alert(`❌ 配置保存失败：${msg}`);
+                    }
+                });
+            }
+
+            // ==================== ComfyUI启停 ====================
+            function startComfyUI() {
+                renderLog('🚀 开始启动ComfyUI...', 'info');
+                ipcRenderer.send('start-comfyui');
+            }
+
+            function stopComfyUI() {
+                renderLog('⏹️ 开始停止ComfyUI...', 'info');
+                ipcRenderer.send('stop-comfyui');
+            }
+            
+            // ==================== 手动视图切换 ====================
+            function switchToLogView() {
+                comfyuiContainer.style.display = 'none';
+                logContainer.style.display = 'block';
+                // 收起日志面板
+                comfyuiLogPanel.style.height = '0px';
+                comfyuiContainer.style.height = 'calc(100vh - 45px - 30px)';
+                toggleLogPanelBtn.textContent = '🔽 展开日志面板';
+                
+                // 更新窗口标题
+                window.parent && window.parent.document && (window.parent.document.title = 'ComfyUI启动器 - 日志视图');
+                renderLog('📋 切换到日志视图', 'info');
+            }
+            
+            function switchToComfyUIView() {
+                // 检查是否已知ComfyUI端口
+                const port = document.getElementById('comfy-port').value || 8188;
+                const comfyUrl = `http://localhost:${port}`;
+                
+                logContainer.style.display = 'none';
+                comfyuiContainer.style.display = 'block';
+                
+                // 使用setTimeout确保DOM更新后再加载
+                setTimeout(() => {
+                    // 设置iframe的src并添加加载监听
+                    comfyuiContainer.src = comfyUrl;
+                    
+                    // 添加加载状态指示
+                    document.body.style.cursor = 'wait';
+                    
+                    // 监听iframe加载完成
+                    comfyuiContainer.onload = function() {
+                        document.body.style.cursor = 'default';
+                        renderLog('✅ ComfyUI界面加载完成', 'success');
+                    };
+                    
+                    // 监听iframe加载错误
+                    comfyuiContainer.onerror = function() {
+                        document.body.style.cursor = 'default';
+                        renderLog('❌ ComfyUI界面加载失败，请检查服务是否正常运行', 'error');
+                    };
+                }, 100);
+                
+                // 更新窗口标题
+                window.parent && window.parent.document && (window.parent.document.title = `ComfyUI - 端口${port}`);
+                renderLog(`🖼️ 切换到ComfyUI视图 (端口${port})`, 'info');
+            }
+            
+            // ==================== 视图切换 ====================
+            ipcRenderer.on('switch-view', (_, viewType, comfyUrl) => {
+                if (viewType === 'comfyui') {
+                    logContainer.style.display = 'none';
+                    comfyuiContainer.style.display = 'block';
+                    
+                    // 确保iframe正确加载ComfyUI
+                    if (comfyuiContainer.src !== comfyUrl) {
+                        // 使用setTimeout确保DOM更新后再加载
+                        setTimeout(() => {
+                            comfyuiContainer.src = comfyUrl;
+                        }, 100);
+                    }
+                    
+                    // 添加加载状态指示
+                    document.body.style.cursor = 'wait';
+                    
+                    // 监听iframe加载完成
+                    comfyuiContainer.onload = function() {
+                        document.body.style.cursor = 'default';
+                        sendLog('✅ ComfyUI界面加载完成', 'success');
+                    };
+                    
+                    // 监听iframe加载错误
+                    comfyuiContainer.onerror = function() {
+                        document.body.style.cursor = 'default';
+                        sendLog('❌ ComfyUI界面加载失败，请检查服务是否正常运行', 'error');
+                    };
+                } else {
+                    comfyuiContainer.style.display = 'none';
+                    logContainer.style.display = 'block';
+                    // 收起日志面板
+                    comfyuiLogPanel.style.height = '0px';
+                    comfyuiContainer.style.height = 'calc(100vh - 45px - 30px)';
+                    toggleLogPanelBtn.textContent = '🔽 展开日志面板';
+                }
+            });
+            
+            // 监听加载状态检查
+            ipcRenderer.on('check-comfyui-load-status', () => {
+                // 检查iframe是否已加载内容
+                try {
+                    if (comfyuiContainer.contentDocument && comfyuiContainer.contentDocument.title) {
+                        sendLog(`✅ ComfyUI加载状态：已成功加载 (${comfyuiContainer.contentDocument.title})`, 'success');
+                    } else {
+                        sendLog('⚠️ ComfyUI加载状态：仍在加载中...', 'info');
+                        // 尝试重新加载
+                        setTimeout(() => {
+                            if (comfyuiContainer.style.display === 'block' && 
+                                comfyuiContainer.contentDocument && 
+                                !comfyuiContainer.contentDocument.body.innerHTML.trim()) {
+                                sendLog('🔄 尝试重新加载ComfyUI界面...', 'info');
+                                // 使用setTimeout确保在下一个事件循环中重新加载
+                                setTimeout(() => {
+                                    comfyuiContainer.src = comfyuiContainer.src; // 重新加载
+                                }, 100);
+                            }
+                        }, 3000);
+                    }
+                } catch (e) {
+                    // 跨域错误是正常的，因为页面还在加载中
+                    sendLog('⏳ ComfyUI加载状态：页面仍在加载中（可能因跨域策略无法访问内容）', 'info');
+                }
+            });
+            
+            // 处理iframe准备就绪消息
+            ipcRenderer.on('ensure-iframe-ready', () => {
+                // 确保iframe元素存在且已准备就绪
+                if (comfyuiContainer && comfyuiContainer.style.display === 'block') {
+                    // 确保iframe内容正确加载
+                    const port = document.getElementById('comfy-port').value || 8188;
+                    const currentSrc = comfyuiContainer.src;
+                    const expectedSrc = `http://localhost:${port}`;
+                    
+                    if (currentSrc !== expectedSrc) {
+                        // 如果iframe没有加载正确的URL，重新设置
+                        comfyuiContainer.src = expectedSrc;
+                        sendLog(`🔧 确保iframe加载正确URL: ${expectedSrc}`, 'info');
+                    }
+                }
+            });
+            
+            // ==================== 快捷键 ====================
+            function initShortcut() {
+                document.addEventListener('keydown', (e) => {
+                    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'c') {
+                        e.preventDefault();
+                        showConfigPanel();
+                    }
+                    if (e.ctrlKey && e.key === 'l') {
+                        e.preventDefault();
+                        clearLogs();
+                    }
+                });
+            }
+
+            // ==================== 初始化 ====================
+            // 关键修改：适配主进程发送的日志格式（{content, type}）
+            ipcRenderer.on('comfy-log', (_, logData) => {
+                // 主进程已处理时间戳，直接渲染内容和类型
+                renderLog(logData.content, logData.type);
+            });
+
+            ipcRenderer.on('config-loaded', (_, config) => {
+                pythonPathInput.value = config.pythonPath || '';
+                comfyuiDirInput.value = config.comfyuiDir || '';
+                comfyPortInput.value = config.port || 8188;
+                proxyModeSelect.value = config.proxy || 'disabled';
+                proxyUrlInput.value = config.proxyUrl || '';
+                customCmdInput.value = config.customCmd || '';
+                pluginCheckDaysInput.value = config.pluginCheckDays || 7;
+                toggleProxyInput();
+                if (pythonPathInput.value) checkPythonPath();
+                if (comfyuiDirInput.value) checkComfyuiDir();
+                checkPort();
+            });
+
+            ipcRenderer.on('show-config', showConfigPanel);
+
+            document.addEventListener('DOMContentLoaded', () => {
+                initConfigDrag();
+                initLogResize();
+                initShortcut();
+                renderLog('✅ ComfyUI启动器就绪，请先完成配置再启动', 'success');
+                pythonPathInput.addEventListener('blur', checkPythonPath);
+                comfyuiDirInput.addEventListener('blur', checkComfyuiDir);
+                comfyPortInput.addEventListener('blur', checkPort);
+                pluginCheckDaysInput.addEventListener('input', () => {
+                    const val = parseInt(pluginCheckDaysInput.value);
+                    if (val < 1) pluginCheckDaysInput.value = 1;
+                    if (val > 30) pluginCheckDaysInput.value = 30;
+                });
+            });
+
+        } catch (err) {
+            alert(`前端脚本执行错误：${err.message}\n请检查Electron环境或代码是否完整`);
+            console.error('前端脚本错误：', err);
+        }
+    </script>
+</body>
+</html>

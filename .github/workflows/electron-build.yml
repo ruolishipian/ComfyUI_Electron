@@ -1,0 +1,61 @@
+# 工作流名称（适配你的ComfyUI_Electron项目）
+name: Electron 自动构建 & 发布
+
+on:
+  push:
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    # 给整个job配置GH_TOKEN，所有步骤都能访问
+    env:
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
+    steps:
+      - name: 拉取代码（适配你的仓库）
+        uses: actions/checkout@v4
+
+      - name: 安装Node.js 18.x（适配electron 28.x）
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18.x
+          cache: 'npm'
+
+      - name: 安装项目依赖（使用国内镜像加速）
+        run: |
+          npm config set registry https://registry.npmmirror.com
+          npm install  # 移除--force，避免掩盖依赖冲突
+        shell: pwsh
+
+      - name: 清理electron-builder缓存（避免旧配置干扰）
+        run: |
+          Remove-Item -Recurse -Force $env:LOCALAPPDATA\electron-builder\Cache -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force node_modules\.cache\electron-builder -ErrorAction SilentlyContinue
+        shell: pwsh
+        continue-on-error: true
+
+      - name: 打包Windows x64版本（禁用electron-builder自动发布）
+        run: npx electron-builder --win --x64 --publish never  # 关键：--publish never 禁用自动发布
+        shell: pwsh
+
+      - name: 上传产物到Releases（仅打tag时执行）
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            dist/ComfyUI_Electron-*-win.zip
+            dist/ComfyUI_Electron Setup *.exe
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      # 兜底：上传产物到Actions（即使没打tag也能手动下载）
+      - name: 上传打包产物到Actions Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ComfyUI_Electron-Win64
+          path: |
+            dist/ComfyUI_Electron-*-win.zip
+            dist/ComfyUI_Electron Setup *.exe
+          retention-days: 30

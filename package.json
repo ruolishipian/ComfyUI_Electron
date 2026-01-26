@@ -1,0 +1,87 @@
+{
+  "name": "ComfyUI_Electron",
+  "version": "1.0.2",
+  "description": "ComfyUI一键启动器，自带日志监控、进程管理、端口自动清理，开箱即用",
+  "main": "main.js",
+  "author": "ruolishipian",
+  "license": "MIT",
+  "homepage": "https://github.com/ruolishipian/ComfyUI_Electron",
+  "scripts": {
+    "start": "electron . --js-flags=\"--expose-gc --max-old-space-size=1024\" --disable-smooth-scrolling --disable-extensions --no-sandbox --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding --prerender-from-omnibox=disabled --disable-features=TranslateUI,BlinkGenPropertyTrees,ImprovedVideoControls,Printing,PaymentRequest,WebBluetooth,AutonomousInvalidationForSubresources,VizDisplayCompositor",
+    "pack": "electron-builder --dir",
+    "build": "electron-builder --win --x64",
+    "build-full": "electron-builder --win --x64",
+    "build-minimal": "electron-builder --win --x64 --config.asar=true --config.compression=maximum",
+    "build-all-platforms": "npm run build && npm run build -- --linux && npm run build -- --mac"
+  },
+  "dependencies": {
+    "iconv-lite": "^0.6.3"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.ruolishipian.comfyui-electron",
+    "productName": "ComfyUI_Electron",
+    "copyright": "Copyright © 2026 ${author}",
+    "directories": {
+      "output": "dist",
+      "buildResources": ""
+    },
+    "files": [
+      "**/*",
+      "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+      "!**/node_modules/*.d.ts",
+      "!**/node_modules/*.map",
+      "!**/node_modules/.bin",
+      "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}",
+      "!.editorconfig",
+      "!**/._*",
+      "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
+      "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
+      "!**/{appveyor.yml,.travis.yml,circle.yml}",
+      "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}",
+      "!test_params.js"
+    ],
+    "extraResources": [
+      {
+        "from": "LICENSE",
+        "to": "LICENSE"
+      }
+    ],
+    "asar": true,
+    "compression": "maximum",
+    "afterPack": "./skip-sign.js",
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "${productName}_v${version}.${ext}",
+      "icon": "icon.ico",
+      "sign": false,
+      "publisherName": "ruolishipian"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "ComfyUI_Electron",
+      "uninstallDisplayName": "ComfyUI_Electron"
+    }
+  }
+}
