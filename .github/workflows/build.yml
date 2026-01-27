@@ -1,6 +1,5 @@
-name: Electron 自动构建 & 最小化发布
+name: Electron 极简构建 & 双版本发布
 
-# 👇 新增：授予工作流修改仓库内容的权限（解决403报错的核心）
 permissions:
   contents: write
 
@@ -13,47 +12,78 @@ jobs:
   build-windows:
     runs-on: windows-latest
     steps:
-      - name: 拉取代码（适配你的仓库）
+      - name: 拉取代码
         uses: actions/checkout@v4
 
-      - name: 安装Node.js 18.x（适配electron 28.x）
+      - name: 安装Node.js 18.x
         uses: actions/setup-node@v4
         with:
           node-version: 18.x
           cache: 'npm'
 
-      - name: 安装项目依赖（使用国内镜像加速）
+      - name: 安装依赖（仅生产环境，使用国内镜像）
         run: |
           npm config set registry https://registry.npmmirror.com
-          npm install
+          # 👇 核心修改：--omit=dev 不安装开发依赖，大幅减小体积
+          npm install --omit=dev
         shell: pwsh
 
-      - name: 清理electron-builder缓存（避免旧配置干扰）
+      - name: 清理electron-builder缓存
         run: |
           Remove-Item -Recurse -Force $env:LOCALAPPDATA\electron-builder\Cache -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force node_modules\.cache\electron-builder -ErrorAction SilentlyContinue
         shell: pwsh
         continue-on-error: true
 
-      - name: 打包Windows NSIS安装程序和Portable压缩包
-        run: npx electron-builder --win --x64 --config.asar=true --config.compression=maximum --publish never
+      - name: 🧹 注入清理脚本（保留中英文，删除其他语言包）
+        run: |
+          $script = @'
+          const fs = require('fs');
+          const path = require('path');
+          
+          function cleanLocales(appPath) {
+            const localesPath = path.join(appPath, 'locales');
+            if (fs.existsSync(localesPath)) {
+              fs.readdirSync(localesPath).forEach(file => {
+                // 只保留 zh-CN (简体中文) 和 en-US (英文)
+                if (!file.includes('zh-CN') && !file.includes('en-US')) {
+                  try {
+                    fs.unlinkSync(path.join(localesPath, file));
+                    console.log('🗑️ 删除冗余语言包:', file);
+                  } catch (e) {}
+                }
+              });
+            }
+          }
+          
+          exports.default = async (context) => {
+            console.log('🧹 开始清理非核心文件...');
+            cleanLocales(context.appOutDir);
+          }
+          '@
+          Set-Content -Path "clean-locales-plugin.js" -Value $script
         shell: pwsh
 
-      - name: 上传产物到Releases
+      - name: 打包 (仅安装包+压缩包)
+        run: |
+          npx electron-builder --win --x64 --publish never `
+            --config.afterPack=./clean-locales-plugin.js
+        shell: pwsh
+
+      - name: 上传到 Releases
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: dist/**
-          draft: false
-          prerelease: false
-          # 👇 新增：显式使用具有写权限的Token（虽然默认会用，但显式写出更保险）
+          files: |
+            dist/*.exe
+            dist/*.zip
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      # 兜底：上传产物到Actions（即使没打tag也能手动下载）
-      - name: 上传最小化打包产物到Actions Artifacts
+      - name: 上传到 Artifacts (备用)
         uses: actions/upload-artifact@v4
         with:
-          name: ComfyUI_Electron-Minimal-Win64
+          name: ComfyUI_Electron-Core
           path: |
-            dist/**
+            dist/*.exe
+            dist/*.zip
           retention-days: 30
