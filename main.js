@@ -13,7 +13,7 @@ const configFileName = 'comfyui-config.json'; // 配置文件（存储在启动�
 const startFileName = 'start_comfyui.bat';    // 启动文件（存储在启动器目录）
 let isComfyUISuccessStarted = false; // ComfyUI是否启动成功
 let currentView = 'log'; // 当前视图：log（日志）/comfyui（界面）
-const appDir = app.getAppPath(); // 启动器目录（软件目录）
+const userDataPath = app.getPath('userData'); // 用户数据目录（可写）
 let isKillingProcess = false;   // 【新增】进程清理状态标记，防止重复调用
 let performanceMonitorInterval = null; // 性能监控定时器
 
@@ -178,10 +178,10 @@ function sendLog(content, type = null) {
     console.log(`[${timestamp}] [${logType.toUpperCase()}] ${content}`);
 }
 
-// ==================== 配置管理（存储在软件目录） ====================
-// 获取配置文件路径（启动器目录）
+// ==================== 配置管理（存储在用户数据目录） ====================
+// 获取配置文件路径（用户数据目录，可写）
 function getConfigPath() {
-    return path.join(appDir, configFileName);
+    return path.join(userDataPath, configFileName);
 }
 
 // 加载配置（启动时自动加载）
@@ -190,7 +190,7 @@ function loadConfig() {
     try {
         if (fs.existsSync(configPath)) {
             config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-            sendLog(`✅ 加载配置文件：${configPath}`, 'info');
+            sendLog(`✅ 加载用户配置文件：${configPath}`, 'info');
         } else {
             // 默认配置
             config = {
@@ -202,7 +202,7 @@ function loadConfig() {
                 customCmd: '',
                 pluginCheckDays: 7
             };
-            sendLog('ℹ️ 首次启动，使用默认配置（未检测到配置文件）', 'info');
+            sendLog('ℹ️ 首次启动，使用默认配置（未检测到用户配置文件）', 'info');
         }
     } catch (e) {
         config = {
@@ -223,17 +223,17 @@ function saveConfig(newConfig) {
     try {
         config = { ...config, ...newConfig };
         fs.writeFileSync(getConfigPath(), JSON.stringify(config, null, 2), 'utf8');
-        sendLog(`✅ 配置已保存到：${getConfigPath()}`, 'success');
+        sendLog(`✅ 配置已保存到用户数据目录：${getConfigPath()}`, 'success');
     } catch (e) {
         sendLog(`❌ 配置保存失败：${e.message}`, 'error');
         throw e;
     }
 }
 
-// ==================== 启动文件生成（启动器目录下） ====================
+// ==================== 启动文件生成（用户数据目录下） ====================
 // 生成ComfyUI启动文件（bat）：GBK编码+CRLF换行+适配带空格路径
 function generateStartFile() {
-    const startPath = path.join(appDir, startFileName);
+    const startPath = path.join(userDataPath, startFileName);
     const port = config.port || 8188;
     const cmdArgs = ['main.py', `--port=${port}`];
     
@@ -287,7 +287,7 @@ function generateStartFile() {
     try {
         const gbkContent = iconv.encode(batContent, 'gbk');
         fs.writeFileSync(startPath, gbkContent, { flag: 'w' });
-        sendLog(`✅ 生成启动文件：${startPath}（GBK编码+CRLF换行）`, 'info');
+        sendLog(`✅ 生成启动文件到用户数据目录：${startPath}（GBK编码+CRLF换行）`, 'info');
         return { startPath, cmdArgs }; // 【修改】返回cmdArgs，用于构建启动命令
     } catch (e) {
         sendLog(`❌ 生成启动文件失败：${e.message}`, 'error');
