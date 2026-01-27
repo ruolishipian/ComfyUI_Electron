@@ -35,7 +35,7 @@ jobs:
         shell: pwsh
         continue-on-error: true
 
-      - name: 打包Windows x64版本（最小化打包，禁用electron-builder自动发布）
+      - name: 打包Windows NSIS安装程序和Portable压缩包
         run: npx electron-builder --win --x64 --config.asar=true --config.compression=maximum --publish never
         shell: pwsh
 
