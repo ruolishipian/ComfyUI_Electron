@@ -25,15 +25,15 @@
       "output": "dist",
       "buildResources": ""
     },
-      "files": [
-        "**/*", 
-        "!**/node_modules/*/{test,tests,__tests__}/**",
-        "!**/node_modules/*.md",
-        "!**/node_modules/@types/**",
-        "!**/node_modules/.bin/**",
-        "!**/tsconfig.json",
-        "!**/*.tsbuildinfo"
-      ],
+    "files": [
+      "**/*",
+      "!**/node_modules/*/{test,tests,__tests__}/**",
+      "!**/node_modules/*.md",
+      "!**/node_modules/@types/**",
+      "!**/node_modules/.bin/**",
+      "!**/tsconfig.json",
+      "!**/*.tsbuildinfo"
+    ],
     "extraResources": [
       {
         "from": "LICENSE",
@@ -47,11 +47,15 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "zip",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "artifactName": "${productName}_v${version}.${ext}",
