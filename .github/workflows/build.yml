@@ -21,11 +21,10 @@ jobs:
           node-version: 22.x
           cache: 'npm'
 
-      - name: 安装依赖（仅生产环境，使用国内镜像）
+      - name: 安装依赖（使用国内镜像）
         run: |
           npm config set registry https://registry.npmmirror.com
-          # 👇 核心修改：--omit=dev 不安装开发依赖，大幅减小体积
-          npm install --omit=dev
+          npm install
         shell: pwsh
 
       - name: 清理electron-builder缓存
