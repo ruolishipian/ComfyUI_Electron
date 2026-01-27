@@ -43,8 +43,6 @@ jobs:
           files: dist/**
           draft: false
           prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.ComfyUI_Electron-Build-New }}
 
       # 兜底：上传产物到Actions（即使没打tag也能手动下载）
       - name: 上传最小化打包产物到Actions Artifacts
