@@ -56,8 +56,8 @@
       ],
       "artifactName": "${productName}_v${version}.${ext}",
       "icon": "icon.ico",
-      "sign": false,
-      "publisherName": "ruolishipian"
+      "certificateSubjectName": "ruolishipian",
+      "verifyUpdateCodeSignature": false
     },
     "nsis": {
       "oneClick": false,
