@@ -55,9 +55,7 @@
         }
       ],
       "artifactName": "${productName}_v${version}.${ext}",
-      "icon": "icon.ico",
-      "certificateSha1": null,
-      "signingHashAlgorithms": ["sha256"]
+      "icon": "icon.ico"
     },
     "nsis": {
       "oneClick": false,
