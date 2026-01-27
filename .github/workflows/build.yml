@@ -15,10 +15,10 @@ jobs:
       - name: 拉取代码
         uses: actions/checkout@v4
 
-      - name: 安装Node.js 18.x
+      - name: 安装Node.js 22.x
         uses: actions/setup-node@v4
         with:
-          node-version: 18.x
+          node-version: 22.x
           cache: 'npm'
 
       - name: 安装依赖（仅生产环境，使用国内镜像）
