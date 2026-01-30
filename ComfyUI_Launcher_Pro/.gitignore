@@ -1,0 +1,12 @@
+plaintext
+node_modules/
+/dist/
+/build/
+*.log
+.DS_Store
+Thumbs.db
+*.tmp
+*.bak
+/comfyui-config.json
+/auto_start.bat
+/start_comfyui.bat
